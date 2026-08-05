@@ -9,16 +9,19 @@ jobs:
           path: my-ports
       - name: Build Image
         run: |
-          sudo apt update && sudo apt install -y python3-pip git openssl parted
+          sudo apt update && sudo apt install -y git openssl parted qemu-user-static
           git clone https://gitlab.postmarketos.org/postmarketOS/pmbootstrap.git
-          cd pmbootstrap
-          sudo ./pmbootstrap.py --aports=../pmaports init --device=samsung-gts7fewifi --ui=plasma-mobile --work=/tmp/pmbootstrap --is-custom-channel --no-sshd || true
-          cd ..
           git clone https://gitlab.postmarketos.org/postmarketOS/pmaports.git
-          cp -r my-ports/device/testing/* pmaports/device/testing/
-          ./pmbootstrap/pmbootstrap.py --aports=pmaports init --device=samsung-gts7fewifi --ui=plasma-mobile --work=/tmp/pmbootstrap --no-sshd --is-custom-channel
-          ./pmbootstrap/pmbootstrap.py install --fde --no-sshd
-          ./pmbootstrap/pmbootstrap.py export
+          cp -rv my-ports/device/testing/* pmaports/device/testing/
+          cd pmbootstrap
+          ./pmbootstrap.py config aports $GITHUB_WORKSPACE/pmaports
+          ./pmbootstrap.py config device samsung-gts7fewifi
+          ./pmbootstrap.py config ui plasma-mobile
+          ./pmbootstrap.py config work /tmp/pmbootstrap
+          ./pmbootstrap.py zap -p
+          echo -e "y\n" | ./pmbootstrap.py -y init
+          ./pmbootstrap.py install --fde --no-sshd
+          ./pmbootstrap.py export
           ls -lh /tmp/postmarketOS-export/
       - name: Upload IMG
         uses: actions/upload-artifact@v4

@@ -29,7 +29,7 @@ jobs:
       - name: Clone pmbootstrap and pmaports
         run: |
           git clone --depth 1 https://gitlab.postmarketos.org/postmarketOS/pmbootstrap.git
-          git clone --depth 1 https://gitlab.postmarketos.org/postmarketOS/pmaports.git
+          git clone --depth 1 https://gitlab.postmarketos.org/postmarketOS/pmaports.git pmaports
       
       - name: Copy custom device port
         run: |

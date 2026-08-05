@@ -1,0 +1,24 @@
+name: Build T733
+on: [push, workflow_dispatch]
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          path: my-ports
+      - name: Build Image
+        run: |
+          sudo apt update && sudo apt install -y python3-pip
+          pip3 install pmbootstrap
+          git clone https://gitlab.postmarketos.org/postmarketOS/pmaports.git
+          cp -r my-ports/device/testing/* pmaports/device/testing/
+          pmbootstrap --aports=pmaports init --device=samsung-gts7fewifi --ui=plasma-mobile --work=/tmp/pmbootstrap
+          pmbootstrap install --fde --no-sshd
+          pmbootstrap export
+          ls -lh /tmp/postmarketOS-export/
+      - name: Upload IMG
+        uses: actions/upload-artifact@v4
+        with:
+          name: gts7fewifi-img
+          path: /tmp/postmarketOS-export/*

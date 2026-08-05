@@ -1,0 +1,19 @@
+# Reference: https://postmarketos.org/devicepkg
+# Maintainer: t733-porter <you@pmos>
+pkgname=device-samsung-gts7fewifi
+pkgdesc="Samsung Galaxy Tab S7 FE Wifi (SM-T733)"
+pkgver=1
+pkgrel=0
+arch="aarch64"
+license="MIT"
+options="!check !archcheck"
+depends="postmarketos-base linux-postmarketos-qcom-sm7225 soc-qcom-sm7225"
+makedepends="devicepkg-dev"
+source="deviceinfo gts7fewifi.dtb"
+sha512sums="
+SKIP
+SKIP
+"
+package() {
+    devicepkg-dev package $pkgname $srcdir
+}

@@ -1,0 +1,38 @@
+# Reference: <specify kernel source URL>
+pkgname=linux-samsung-gts7fewifi
+pkgver=5.4.210
+pkgrel=0
+pkgdesc="Samsung Galaxy Tab S7 FE (SM-T733) downstream kernel"
+arch="aarch64"
+_carch="arm64"
+_flavor="samsung-gts7fewifi"
+url="https://github.com/danyelsucio/pmaports-gts7fewifi"
+license="GPL-2.0-only"
+options="!strip !check !archcheck"
+makedepends="bash bc bison devicepkg-dev flex gcc gmp-dev libelf-dev mpc1-dev mpfr-dev openssl-dev perl python3"
+
+# downstream kernel from stock boot.img / source
+# replace with your kernel repo if you have it
+source="config-samsung-gts7fewifi.aarch64
+        kernel-5.4.patch
+"
+builddir="$srcdir"
+
+prepare() {
+    default_prepare
+}
+
+build() {
+    # downstream build is handled externally, we use prebuilt config
+    echo "downstream kernel placeholder"
+}
+
+package() {
+    # placeholder
+    mkdir -p "$pkgdir"/boot
+}
+
+sha512sums="
+SKIP
+SKIP
+"

@@ -1,35 +1,124 @@
-name: Build T733
-on: [push, workflow_dispatch]
+name: Build T733 Console
+on: 
+  push:
+    branches: [ main, master ]
+  workflow_dispatch:
+
 jobs:
   build:
     runs-on: ubuntu-latest
+    timeout-minutes: 360  # 6 horas máximo
+    
     steps:
       - uses: actions/checkout@v4
         with:
           path: my-ports
-      - name: Build Image
+      
+      - name: Install dependencies
         run: |
-          sudo apt update && sudo apt install -y git openssl parted qemu-user-static
-          git clone https://gitlab.postmarketos.org/postmarketOS/pmbootstrap.git
-          git clone https://gitlab.postmarketos.org/postmarketOS/pmaports.git
-          cp -rv my-ports/device/testing/* pmaports/device/testing/
-          mkdir -p ~/.config/pmbootstrap
-          cat > ~/.config/pmbootstrap/v3.cfg <<'EOF'
-          [pmbootstrap]
-          aports = /home/runner/work/pmaports-gts7fewifi/pmaports-gts7fewifi/pmaports
-          device = samsung-gts7fewifi
-          ui = console
-          work = /tmp/pmbootstrap
-          is_custom_channel = False
-          cfg_version = 3
-          EOF
-          cd pmbootstrap
-           ./pmbootstrap.py --work /tmp/pmbootstrap --aports $GITHUB_WORKSPACE/pmaports zap -p
-           ./pmbootstrap.py --work /tmp/pmbootstrap --aports $GITHUB_WORKSPACE/pmaports -y install --no-sshd
-           ./pmbootstrap.py --work /tmp/pmbootstrap --aports $GITHUB_WORKSPACE/pmaports export
-          ls -lh /tmp/postmarketOS-export/
-      - name: Upload IMG
+          sudo apt update
+          sudo apt install -y \
+            git \
+            openssl \
+            parted \
+            qemu-user-static \
+            binfmt-support \
+            xz-utils \
+            cpio
+      
+      - name: Clone pmbootstrap and pmaports
+        run: |
+          git clone --depth 1 https://gitlab.postmarketos.org/postmarketOS/pmbootstrap.git
+          git clone --depth 1 https://gitlab.postmarketos.org/postmarketOS/pmaports.git
+      
+      - name: Copy custom device port
+        run: |
+          if [ -d "my-ports/device/testing" ] && [ "$(ls -A my-ports/device/testing)" ]; then
+            cp -rv my-ports/device/testing/* pmaports/device/testing/
+            echo "✅ Custom port copied successfully"
+            ls -la pmaports/device/testing/
+          else
+            echo "❌ Error: No custom port found in my-ports/device/testing/"
+            exit 1
+          fi
+      
+      - name: Cache pmbootstrap work directory
+        uses: actions/cache@v4
+        with:
+          path: /tmp/pmbootstrap
+          key: pmbootstrap-${{ runner.os }}-${{ hashFiles('pmaports/**', 'my-ports/**') }}
+          restore-keys: |
+            pmbootstrap-${{ runner.os }}-
+      
+      - name: Initialize pmbootstrap
+        working-directory: ./pmbootstrap
+        run: |
+          printf "edge\nsamsung-gts7fewifi\nuser\nconsole\n\nn\n" | \
+            ./pmbootstrap.py --aports $GITHUB_WORKSPACE/pmaports --work /tmp/pmbootstrap init
+      
+      - name: Configure build settings
+        working-directory: ./pmbootstrap
+        run: |
+          ./pmbootstrap.py --aports $GITHUB_WORKSPACE/pmaports --work /tmp/pmbootstrap config device samsung-gts7fewifi
+          ./pmbootstrap.py --aports $GITHUB_WORKSPACE/pmaports --work /tmp/pmbootstrap config ui console
+          ./pmbootstrap.py --aports $GITHUB_WORKSPACE/pmaports --work /tmp/pmbootstrap config kernel gts7fewifi
+          ./pmbootstrap.py --aports $GITHUB_WORKSPACE/pmaports --work /tmp/pmbootstrap config ssh_keys ""
+          ./pmbootstrap.py --aports $GITHUB_WORKSPACE/pmaports --work /tmp/pmbootstrap config extra_packages "vim,htop,openssh"
+      
+      - name: Clean previous builds
+        working-directory: ./pmbootstrap
+        run: |
+          ./pmbootstrap.py --aports $GITHUB_WORKSPACE/pmaports --work /tmp/pmbootstrap zap -p
+      
+      - name: Build and install
+        working-directory: ./pmbootstrap
+        run: |
+          ./pmbootstrap.py --aports $GITHUB_WORKSPACE/pmaports --work /tmp/pmbootstrap --no-ccache -y install
+      
+      - name: Export image
+        working-directory: ./pmbootstrap
+        run: |
+          ./pmbootstrap.py --aports $GITHUB_WORKSPACE/pmaports --work /tmp/pmbootstrap export
+      
+      - name: List exported files
+        run: |
+          echo "=== Exported files ==="
+          ls -lh /tmp/postmarketOS-export/ || echo "No files exported"
+          echo ""
+          echo "=== Finding images ==="
+          find /tmp -name "*.img" -o -name "*.img.xz" 2>/dev/null | while read file; do
+            ls -lh "$file"
+          done
+      
+      - name: Upload IMG artifact
+        if: success()
         uses: actions/upload-artifact@v4
         with:
-          name: gts7fewifi-console-img
-          path: /tmp/postmarketOS-export/*
+          name: gts7fewifi-console-${{ github.run_number }}
+          path: |
+            /tmp/postmarketOS-export/*.img
+            /tmp/postmarketOS-export/*.img.xz
+            /tmp/postmarketOS-export/*.tar.gz
+          retention-days: 7
+          compression-level: 6
+      
+      - name: Upload logs on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-logs-${{ github.run_number }}
+          path: |
+            /tmp/pmbootstrap/logs/
+            ./pmbootstrap/log.txt
+          retention-days: 3
+      
+      - name: Create Release (if tagged)
+        if: startsWith(github.ref, 'refs/tags/') && success()
+        uses: softprops/action-gh-release@v1
+        with:
+          files: |
+            /tmp/postmarketOS-export/*.img.xz
+            /tmp/postmarketOS-export/*.img
+          generate_release_notes: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

@@ -13,18 +13,23 @@ jobs:
           git clone https://gitlab.postmarketos.org/postmarketOS/pmbootstrap.git
           git clone https://gitlab.postmarketos.org/postmarketOS/pmaports.git
           cp -rv my-ports/device/testing/* pmaports/device/testing/
+          mkdir -p ~/.config/pmbootstrap
+          cat > ~/.config/pmbootstrap/v3.cfg <<'EOF'
+          [pmbootstrap]
+          aports = /home/runner/work/pmaports-gts7fewifi/pmaports-gts7fewifi/pmaports
+          device = samsung-gts7fewifi
+          ui = console
+          work = /tmp/pmbootstrap
+          is_custom_channel = False
+          cfg_version = 3
+          EOF
           cd pmbootstrap
-          ./pmbootstrap.py config aports $GITHUB_WORKSPACE/pmaports
-          ./pmbootstrap.py config device samsung-gts7fewifi
-          ./pmbootstrap.py config ui plasma-mobile
-          ./pmbootstrap.py config work /tmp/pmbootstrap
-          ./pmbootstrap.py zap -p
-          echo -e "y\n" | ./pmbootstrap.py -y init
-          ./pmbootstrap.py install --fde --no-sshd
-          ./pmbootstrap.py export
+           ./pmbootstrap.py --work /tmp/pmbootstrap --aports $GITHUB_WORKSPACE/pmaports zap -p
+           ./pmbootstrap.py --work /tmp/pmbootstrap --aports $GITHUB_WORKSPACE/pmaports -y install --no-sshd
+           ./pmbootstrap.py --work /tmp/pmbootstrap --aports $GITHUB_WORKSPACE/pmaports export
           ls -lh /tmp/postmarketOS-export/
       - name: Upload IMG
         uses: actions/upload-artifact@v4
         with:
-          name: gts7fewifi-img
+          name: gts7fewifi-console-img
           path: /tmp/postmarketOS-export/*

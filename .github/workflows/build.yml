@@ -7,7 +7,7 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
-    timeout-minutes: 360  # 6 horas máximo
+    timeout-minutes: 360
     
     steps:
       - uses: actions/checkout@v4
@@ -46,7 +46,7 @@ jobs:
         uses: actions/cache@v4
         with:
           path: /tmp/pmbootstrap
-          key: pmbootstrap-${{ runner.os }}-${{ hashFiles('pmaports/**', 'my-ports/**') }}
+          key: pmbootstrap-${{ runner.os }}-${{ hashFiles('pmaports/**') }}-${{ hashFiles('my-ports/**') }}
           restore-keys: |
             pmbootstrap-${{ runner.os }}-
       

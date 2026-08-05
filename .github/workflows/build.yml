@@ -46,7 +46,7 @@ jobs:
         uses: actions/cache@v4
         with:
           path: /tmp/pmbootstrap
-          key: pmbootstrap-${{ runner.os }}-${{ hashFiles('pmaports/**') }}-${{ hashFiles('my-ports/**') }}
+          key: pmbootstrap-${{ runner.os }}-${{ github.sha }}
           restore-keys: |
             pmbootstrap-${{ runner.os }}-
       

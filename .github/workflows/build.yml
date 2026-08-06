@@ -5,14 +5,15 @@ on:
     branches: [ "main", "master" ]
   pull_request:
     branches: [ "main", "master" ]
-  workflow_dispatch: # Permite ejecutarlo manualmente desde la web de GitHub
+  workflow_dispatch:
 
 jobs:
   build:
-    runs-on: ubuntu-latest
+    # NOTA IMPORTANTE: Forzamos Ubuntu 22.04 para evitar el error de Node 20 y las dependencias rotas de python
+    runs-on: ubuntu-22.04
     
     steps:
-    # 1. Descarga tu código fuente (que contiene las carpetas device/ y aports/)
+    # 1. Descarga tu código fuente
     - name: Checkout repository
       uses: actions/checkout@v4
 
@@ -22,40 +23,33 @@ jobs:
         sudo apt-get update
         sudo apt-get install -y python3 python3-pip git device-tree-compiler
 
-    # 3. Instala pmbootstrap
-    - name: Install pmbootstrap
+    # 3. INSTALACIÓN CORREGIDA: Clona pmbootstrap desde GitHub en lugar de usar pip
+    - name: Install pmbootstrap from source
       run: |
-        pip3 install --user pmbootstrap
+        git clone https://gitlab.com/postmarketOS/pmbootstrap.git
+        cd pmbootstrap
+        python3 setup.py install --user
         echo "$HOME/.local/bin" >> $GITHUB_PATH
+        cd ..
 
-    # 4. Inicializa pmbootstrap (CORREGIDO para evitar el error de rutas)
+    # 4. Inicializa pmbootstrap
     - name: Initialize pmbootstrap
       run: |
-        # Usamos 'yes |' para aceptar las preguntas automáticamente
         yes | pmbootstrap -y \
           --work /tmp/pmbootstrap_work \
           --aports ${{ github.workspace }} \
           init
 
-    # 5. Configura el dispositivo objetivo y compila
+    # 5. Configura el dispositivo y compila
     - name: Build rootfs for gts7fewifi
       run: |
-        # Establecemos el dispositivo y el fabricante con el que quieres trabajar
         pmbootstrap config device gts7fewifi
         pmbootstrap config manufacturer Samsung
-        
-        # Aseguramos que el kernel se compile desde tus fuentes locales (no el de pmOS upstream)
-        # Esta línea es importante para que use tu propio deviceinfo_kernel_cmdline y dtb
         pmbootstrap config kernel local
-        
-        # ¡EL PASO DE COMPILACIÓN REAL!
-        # Construye el kernel, el initramfs y la imagen de sistema (rootfs)
         pmbootstrap build --strict linux-gts7fewifi
-        
-        # Construye la imagen completa descargable (rootfs + kernel + boot.img)
         pmbootstrap install --no-ccache --sdcard=/tmp/pmos-image.img
       
-    # 6. Sube la imagen compilada como artefacto de GitHub para que puedas descargarla
+    # 6. Sube la imagen
     - name: Upload artifact
       uses: actions/upload-artifact@v4
       with:

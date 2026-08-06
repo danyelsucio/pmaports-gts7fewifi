@@ -9,23 +9,25 @@ on:
 
 jobs:
   build:
-    # NOTA IMPORTANTE: Forzamos Ubuntu 22.04 para evitar el error de Node 20 y las dependencias rotas de python
-    runs-on: ubuntu-22.04
+    # CAMBIO: Usamos la versión más reciente para evitar la cola de espera
+    runs-on: ubuntu-24.04
     
     steps:
-    # 1. Descarga tu código fuente
+    # 1. Descarga tu código
     - name: Checkout repository
       uses: actions/checkout@v4
 
-    # 2. Instala dependencias del sistema
+    # 2. Instala dependencias
     - name: Install system dependencies
       run: |
         sudo apt-get update
         sudo apt-get install -y python3 python3-pip git device-tree-compiler
 
-    # 3. INSTALACIÓN CORREGIDA: Clona pmbootstrap desde GitHub en lugar de usar pip
+    # 3. PARCHE PARA UBUNTU 24.04: Instalar pmbootstrap desde el código fuente
     - name: Install pmbootstrap from source
       run: |
+        # Instalamos dependencias extra necesarias en la nueva versión de Ubuntu
+        pip3 install --user setuptools
         git clone https://gitlab.com/postmarketOS/pmbootstrap.git
         cd pmbootstrap
         python3 setup.py install --user
@@ -40,7 +42,7 @@ jobs:
           --aports ${{ github.workspace }} \
           init
 
-    # 5. Configura el dispositivo y compila
+    # 5. Compila
     - name: Build rootfs for gts7fewifi
       run: |
         pmbootstrap config device gts7fewifi

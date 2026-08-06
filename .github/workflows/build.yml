@@ -9,8 +9,8 @@ on:
 
 jobs:
   build:
-    # CAMBIO: Usamos la versión más reciente para evitar la cola de espera
-    runs-on: ubuntu-24.04
+    # CAMBIO AQUÍ: Usamos la versión "mínima" para intentar coger un servidor libre antes
+    runs-on: ubuntu-24.04-core
     
     steps:
     # 1. Descarga tu código
@@ -23,10 +23,9 @@ jobs:
         sudo apt-get update
         sudo apt-get install -y python3 python3-pip git device-tree-compiler
 
-    # 3. PARCHE PARA UBUNTU 24.04: Instalar pmbootstrap desde el código fuente
+    # 3. Instala pmbootstrap desde el código fuente
     - name: Install pmbootstrap from source
       run: |
-        # Instalamos dependencias extra necesarias en la nueva versión de Ubuntu
         pip3 install --user setuptools
         git clone https://gitlab.com/postmarketOS/pmbootstrap.git
         cd pmbootstrap

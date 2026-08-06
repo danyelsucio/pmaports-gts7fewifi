@@ -5,45 +5,59 @@ on:
     branches: [ "main", "master" ]
   pull_request:
     branches: [ "main", "master" ]
+  workflow_dispatch: # Permite ejecutarlo manualmente desde la web de GitHub
 
 jobs:
   build:
     runs-on: ubuntu-latest
     
     steps:
-    # 1. Descarga tu código fuente
+    # 1. Descarga tu código fuente (que contiene las carpetas device/ y aports/)
     - name: Checkout repository
       uses: actions/checkout@v4
 
-    # 2. Instala las dependencias necesarias (ej. python3, git, etc)
-    - name: Install dependencies
+    # 2. Instala dependencias del sistema
+    - name: Install system dependencies
       run: |
         sudo apt-get update
-        sudo apt-get install -y python3 python3-pip git
+        sudo apt-get install -y python3 python3-pip git device-tree-compiler
 
-    # 3. Instala pmbootstrap desde el repositorio oficial o pip
+    # 3. Instala pmbootstrap
     - name: Install pmbootstrap
       run: |
         pip3 install --user pmbootstrap
-        # Añadimos pmbootstrap al PATH para que se pueda ejecutar directamente
         echo "$HOME/.local/bin" >> $GITHUB_PATH
 
-    # 4. Inicializa pmbootstrap (ESTE ES EL PASO CORREGIDO)
+    # 4. Inicializa pmbootstrap (CORREGIDO para evitar el error de rutas)
     - name: Initialize pmbootstrap
       run: |
-        # CORRECCIÓN: Usamos el flag --work y --aports apuntando a /tmp.
-        # Esto evita el error "The work path must not be inside the pmbootstrap path".
-        # También usamos 'yes |' para aceptar la configuración por defecto automáticamente.
+        # Usamos 'yes |' para aceptar las preguntas automáticamente
         yes | pmbootstrap -y \
           --work /tmp/pmbootstrap_work \
-          --aports ${{ github.workspace }}/pmaports \
+          --aports ${{ github.workspace }} \
           init
 
-    # 5. Comando de compilación (Ajusta el dispositivo según el tuyo)
-    # - Ejemplo: pmbootstrap build linux-samsung-m0
-    # - Ejemplo: pmbootstrap install --sdcard=/dev/sdX
-    - name: Run build command
+    # 5. Configura el dispositivo objetivo y compila
+    - name: Build rootfs for gts7fewifi
       run: |
-        pmbootstrap status
-        # Aquí va tu comando de compilación real. Descomenta o edita según tu proyecto:
-        # pmbootstrap build tu_paquete_o_dispositivo
+        # Establecemos el dispositivo y el fabricante con el que quieres trabajar
+        pmbootstrap config device gts7fewifi
+        pmbootstrap config manufacturer Samsung
+        
+        # Aseguramos que el kernel se compile desde tus fuentes locales (no el de pmOS upstream)
+        # Esta línea es importante para que use tu propio deviceinfo_kernel_cmdline y dtb
+        pmbootstrap config kernel local
+        
+        # ¡EL PASO DE COMPILACIÓN REAL!
+        # Construye el kernel, el initramfs y la imagen de sistema (rootfs)
+        pmbootstrap build --strict linux-gts7fewifi
+        
+        # Construye la imagen completa descargable (rootfs + kernel + boot.img)
+        pmbootstrap install --no-ccache --sdcard=/tmp/pmos-image.img
+      
+    # 6. Sube la imagen compilada como artefacto de GitHub para que puedas descargarla
+    - name: Upload artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: pmos-gts7fewifi-image
+        path: /tmp/pmos-image.img

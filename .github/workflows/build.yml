@@ -20,19 +20,30 @@ jobs:
           pip3 install --user ./pmbootstrap
           echo "$HOME/.local/bin" >> $GITHUB_PATH
           
+      - name: Pre-create valid config file to avoid init prompts
+        run: |
+          mkdir -p ~/.config/pmbootstrap
+          
+          # Generamos el archivo de configuración manualmente con el formato correcto
+          cat > ~/.config/pmbootstrap/pmbootstrap.cfg <<EOF
+          [pmbootstrap]
+          aports = ${{ github.workspace }}
+          work = /tmp/pmbootstrap_work
+          device = gts7fewifi
+          channel = edge
+          ui = console
+          extra_space = 0
+          jobs = 2
+          EOF
+          
       - name: Initialize pmbootstrap config
-        env:
-          PMBOOTSTRAP_WORK: /tmp/pmbootstrap_work
-          PMBOOTSTRAP_DEVICE: gts7fewifi
-          PMBOOTSTRAP_CHANNEL: edge
-          PMBOOTSTRAP_NO_FDE: "yes"
-          PMBOOTSTRAP_APORTS: ${{ github.workspace }}
         run: |
           mkdir -p /tmp/pmbootstrap_work
           cd ${{ github.workspace }}
           
-          # Force pmbootstrap to use the current directory as the aports folder directly
-          pmbootstrap --aports . init
+          # Ahora ejecutamos 'init'. Como el archivo de configuración ya existe
+          # y tiene todas las respuestas, no preguntará nada y no fallará.
+          pmbootstrap init
           
       - name: Build rootfs for gts7fewifi
         run: |

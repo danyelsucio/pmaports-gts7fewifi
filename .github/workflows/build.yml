@@ -12,15 +12,21 @@ jobs:
       - name: Install system dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y python3-pip git openssl device-tree-compiler bmap-tools
+          sudo apt-get install -y python3-venv git openssl device-tree-compiler bmap-tools
           
-      - name: Install pmbootstrap v3.4.0 with uv
+      - name: Setup Python venv and install pmbootstrap
         run: |
-          # Instalamos 'uv' (un instalador de Python rapidísimo)
-          pip3 install uv
+          # Crear un entorno virtual de Python (evita el error "externally-managed")
+          python3 -m venv venv
           
-          # Instalamos pmbootstrap 3.4.0 desde su tag de GitHub (evita problemas de PyPI)
-          uv pip install --system "git+https://gitlab.postmarketos.org/postmarketOS/pmbootstrap.git@3.4.0"
+          # Activar el entorno virtual
+          source venv/bin/activate
+          
+          # Instalar pmbootstrap v3.4.0 dentro del entorno virtual (sin errores)
+          pip install "git+https://gitlab.postmarketos.org/postmarketOS/pmbootstrap.git@3.4.0"
+          
+          # Guardar la ruta del entorno para los siguientes pasos
+          echo "$PWD/venv/bin" >> $GITHUB_PATH
           
       - name: Configure environment and build
         run: |

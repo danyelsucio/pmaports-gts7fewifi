@@ -25,7 +25,6 @@ jobs:
           mkdir -p ~/.config/pmbootstrap
           mkdir -p /tmp/pmbootstrap_work
           
-          # Configuración principal
           cat > ~/.config/pmbootstrap/pmbootstrap.cfg <<EOF
           [pmbootstrap]
           aports = ${{ github.workspace }}
@@ -37,7 +36,6 @@ jobs:
           jobs = 2
           EOF
           
-          # pmaports.cfg obligatorio
           cat > ${{ github.workspace }}/pmaports.cfg <<EOF
           [pmaports]
           version = 7
@@ -46,7 +44,6 @@ jobs:
           supported_root_filesystems = ext4,f2fs,btrfs
           EOF
           
-          # Engañar a pmbootstrap
           touch ~/.config/pmbootstrap/pmbootstrap_init_done
           
       - name: Build rootfs for gts7fewifi
@@ -54,8 +51,8 @@ jobs:
           # ESTA VARIABLE ES LA CLAVE. Obliga a pmbootstrap a saltarse la comprobación de Git.
           PMBOOTSTRAP_SKIP_GIT_REQUIREMENT: "1"
         run: |
-          # Usamos el flag --details-to-stdout para que no se cuelgue por timeout
-          pmbootstrap --aports ${{ github.workspace }} install --no-fde --details-to-stdout
+          # ELIMINAMOS el flag --details-to-stdout
+          pmbootstrap --aports ${{ github.workspace }} install --no-fde
           pmbootstrap export
           
           mkdir -p /tmp/out

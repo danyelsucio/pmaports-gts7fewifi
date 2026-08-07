@@ -1,4 +1,4 @@
-name: Manual Build Process (Final Device Fix)
+name: Manual Build Process (Final Device Fix - REAL)
 on:
   push:
     branches: ["main", "master"]
@@ -9,26 +9,24 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Build custom pmbootstrap Docker image (with tomli and kpartx)
+      - name: Build custom pmbootstrap Docker image
         run: |
           docker system prune -af || true
-          
-          cat > Dockerfile <<EOF
+          cat > Dockerfile <<'EOF'
           FROM ubuntu:22.04
-          RUN apt-get update && apt-get install -y python3 python3-pip python3-venv git openssl device-tree-compiler bmap-tools sudo curl kpartx
+          RUN apt-get update && apt-get install -y python3 python3-pip python3-venv git openssl device-tree-compiler bmap-tools sudo curl kpartx qemu-user-static
           RUN git clone https://gitlab.postmarketos.org/postmarketOS/pmbootstrap.git /pmbootstrap
           RUN python3 -m venv /pmbootstrap/venv
           RUN /pmbootstrap/venv/bin/pip install /pmbootstrap tomli
           WORKDIR /work
           CMD ["/pmbootstrap/venv/bin/pmbootstrap"]
           EOF
-          
-          docker build -t pmos-toolbox --no-cache .
+          docker build -t pmos-toolbox.
 
       - name: Execute the Ultimate Build Step
         run: |
           mkdir -p /tmp/out
-          
+          chmod 777 /tmp/out
           docker run --rm -t \
             --entrypoint bash \
             --user root \
@@ -39,39 +37,43 @@ jobs:
             --security-opt apparmor:unconfined \
             pmos-toolbox \
             -c "
-              mkdir -p /work && chmod 777 /work &&
+              set -e
+              mkdir -p /build && chmod 777 /build
+              id pmos || useradd -m -d /build -s /bin/bash pmos
+              echo 'pmos ALL=(ALL) NOPASSWD:ALL' >> /etc/sudoers
+              chown -R pmos:pmos /tmp/out /build
 
-              mkdir -p /build && chmod 777 /build &&
-              useradd -m -d /build -s /bin/bash pmos &&
-              echo 'pmos ALL=(ALL) NOPASSWD:ALL' >> /etc/sudoers &&
-              chown -R pmos:pmos /tmp/out && chown -R pmos:pmos /build &&
+              rm -rf /home/pmos/pmaports_clean
+              git clone https://gitlab.postmarketos.org/postmarketOS/pmaports.git /home/pmos/pmaports_clean
+              mkdir -p /home/pmos/pmaports_clean/device/testing/
+              rm -rf /home/pmos/pmaports_clean/device/testing/device-samsung-gts7fewifi
+              cp -r /home/pmos/mi_repo /home/pmos/pmaports_clean/device/testing/device-samsung-gts7fewifi
+              chown -R pmos:pmos /home/pmos/pmaports_clean
 
-              git clone https://gitlab.postmarketos.org/postmarketOS/pmaports.git /home/pmos/pmaports_clean &&
-              chown -R pmos:pmos /home/pmos/pmaports_clean &&
-              ln -s /home/pmos/mi_repo /home/pmos/pmaports_clean/pmaports-gts7fewifi &&
+              echo '[pmaports]' > /home/pmos/pmaports_clean/pmaports.cfg
+              echo 'version = 7' >> /home/pmos/pmaports_clean/pmaports.cfg
+              echo 'pmbootstrap_min_version = 1.29.0' >> /home/pmos/pmaports_clean/pmaports.cfg
+              echo 'channel = edge' >> /home/pmos/pmaports_clean/pmaports.cfg
 
-              echo '[pmaports]' > /home/pmos/pmaports_clean/pmaports.cfg &&
-              echo 'version = 7' >> /home/pmos/pmaports_clean/pmaports.cfg &&
-              echo 'pmbootstrap_min_version = 1.29.0' >> /home/pmos/pmaports_clean/pmaports.cfg &&
-              echo 'channel = edge' >> /home/pmos/pmaports_clean/pmaports.cfg &&
-
-              # EL TRUCO DEFINITIVO: Variables de entorno para forzar el dispositivo
-              sudo -u pmos bash <<'INIT_EOF'
-                export PMBOOTSTRAP_APORTS=/home/pmos/pmaports_clean
-                export PMBOOTSTRAP_WORK=/tmp/pmos_work
-                export PMBOOTSTRAP_DEVICE=gts7fewifi
-                export PMBOOTSTRAP_CHANNEL=edge
-                export PMBOOTSTRAP_UI=console
-                export PMBOOTSTRAP_EXTRA_SPACE=1500
-
+              sudo -u pmos bash -c '
+                set -x
+                rm -rf /build/.config /build/.local /tmp/pmos_work
                 mkdir -p /tmp/pmos_work
-                /pmbootstrap/venv/bin/pmbootstrap init --yes
-                /pmbootstrap/venv/bin/pmbootstrap install --no-fde
-                /pmbootstrap/venv/bin/pmbootstrap export
-              INIT_EOF
 
-              cp -rv /tmp/pmos_work/cache_http/images/* /tmp/out/ || true;
-              cp -rv /tmp/postmarketOS-export/* /tmp/out/ || true;
+                # FIX: ENTER infinito para que no de EOF
+                yes \"\" | /pmbootstrap/venv/bin/pmbootstrap --aports /home/pmos/pmaports_clean --work /tmp/pmos_work init || true
+
+                # Forzamos TU device despues del init
+                /pmbootstrap/venv/bin/pmbootstrap --aports /home/pmos/pmaports_clean --work /tmp/pmos_work config device gts7fewifi
+                /pmbootstrap/venv/bin/pmbootstrap --aports /home/pmos/pmaports_clean --work /tmp/pmos_work config ui console
+                /pmbootstrap/venv/bin/pmbootstrap --aports /home/pmos/pmaports_clean --work /tmp/pmos_work config extra_space 1500
+
+                /pmbootstrap/venv/bin/pmbootstrap --aports /home/pmos/pmaports_clean --work /tmp/pmos_work install --no-fde
+                /pmbootstrap/venv/bin/pmbootstrap --aports /home/pmos/pmaports_clean --work /tmp/pmos_work export
+              '
+              find /tmp/pmos_work -type f \( -name '*.img' -o -name '*.zip' \) -exec cp -v {} /tmp/out/ \; 2>/dev/null || true
+              cp -rv /tmp/postmarketOS-export/* /tmp/out/ 2>/dev/null || true
+              ls -lhR /tmp/out/
             "
 
       - name: Upload final image

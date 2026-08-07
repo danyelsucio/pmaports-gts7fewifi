@@ -9,36 +9,20 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       
-      - name: Build custom pmbootstrap Docker image
+      - name: Install pmbootstrap-ci (Official CI wrapper)
         run: |
-          docker build -t pmbootstrap-local .
+          # Descargamos el script oficial de CI desde el espejo de GitHub
+          curl -L https://raw.githubusercontent.com/postmarketOS/pmbootstrap-ci/master/pmbootstrap-ci.py -o pmbootstrap-ci.py
+          chmod +x pmbootstrap-ci.py
           
-      - name: Run build using local image
+      - name: Build rootfs for gts7fewifi
         run: |
-          mkdir -p /tmp/pmbootstrap_work
-          mkdir -p /tmp/out
-          
-          # EL TRUCO DEFINITIVO: Entramos al contenedor directamente con 'bash'
-          # y luego ejecutamos todo el script.
-          docker run --rm -t \
-            -v ${{ github.workspace }}:/home/pmos/pmaports \
-            -v /tmp/pmbootstrap_work:/home/pmos/.local/var/pmbootstrap \
-            --device /dev/fuse \
-            --cap-add SYS_ADMIN \
-            --security-opt apparmor:unconfined \
-            pmbootstrap-local \
-            bash -c "
-              echo '[pmaports]' > /home/pmos/pmaports/pmaports.cfg &&
-              echo 'version = 7' >> /home/pmos/pmaports/pmaports.cfg &&
-              echo 'pmbootstrap_min_version = 1.29.0' >> /home/pmos/pmaports/pmaports.cfg &&
-              echo 'channel = edge' >> /home/pmos/pmaports/pmaports.cfg &&
-              
-              pmbootstrap --aports /home/pmos/pmaports --work /home/pmos/.local/var/pmbootstrap init --yes --device gts7fewifi --channel edge &&
-              pmbootstrap --aports /home/pmos/pmaports --work /home/pmos/.local/var/pmbootstrap install --no-fde --details-to-stdout &&
-              pmbootstrap --aports /home/pmos/pmaports --work /home/pmos/.local/var/pmbootstrap export
-            "
-          
-          cp -rv /tmp/pmbootstrap_work/cache_http/images/* /tmp/out/ || true
+          # Esto hace lo mismo que hiciste en Termux, pero en un servidor con 7GB de RAM
+          ./pmbootstrap-ci.py \
+            --device gts7fewifi \
+            --channel edge \
+            --no-fde \
+            --output /tmp/out
           
       - name: Upload artifact
         uses: actions/upload-artifact@v4

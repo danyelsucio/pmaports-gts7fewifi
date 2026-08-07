@@ -25,7 +25,6 @@ jobs:
           mkdir -p ~/.config/pmbootstrap
           mkdir -p /tmp/pmbootstrap_work
           
-          # Configuración principal con EXTRA_SPACE añadido
           cat > ~/.config/pmbootstrap/pmbootstrap.cfg <<EOF
           [pmbootstrap]
           aports = ${{ github.workspace }}
@@ -37,7 +36,6 @@ jobs:
           jobs = 2
           EOF
           
-          # pmaports.cfg obligatorio
           cat > ${{ github.workspace }}/pmaports.cfg <<EOF
           [pmaports]
           version = 7
@@ -46,18 +44,15 @@ jobs:
           supported_root_filesystems = ext4,f2fs,btrfs
           EOF
           
-          # Arreglar Git y descargar channels.cfg
           cd ${{ github.workspace }}
           git remote set-url origin https://gitlab.postmarketos.org/postmarketOS/pmaports.git
           git fetch origin master --depth 1
           
       - name: Build rootfs for gts7fewifi
         run: |
-          # CAMBIO CLAVE: Añadimos '--yes' para que acepte el archivo .cfg sin preguntar.
-          pmbootstrap --aports ${{ github.workspace }} init --yes
-          
-          # Ahora el install usará el dispositivo correcto (gts7fewifi)
-          pmbootstrap --aports ${{ github.workspace }} install --no-fde --details-to-stdout
+          # EL TRUCO DEFINITIVO: Usamos --config para cargar el archivo manual y saltarnos el init por completo.
+          # Esto evita los errores de EOF y el argumento --yes.
+          pmbootstrap --config ~/.config/pmbootstrap/pmbootstrap.cfg install --no-fde --details-to-stdout
           pmbootstrap export
           
           mkdir -p /tmp/out

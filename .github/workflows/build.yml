@@ -1,4 +1,4 @@
-name: Manual Build Process (Force Rebuild)
+name: Manual Build Process (Symlink Fix)
 on:
   push:
     branches: ["main", "master"]
@@ -9,9 +9,8 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Build custom pmbootstrap Docker image
+      - name: Build custom pmbootstrap Docker image (with tomli)
         run: |
-          # FORZAMOS LA LIMPIEZA DE LA CACHÉ DE DOCKER
           docker system prune -af || true
           
           cat > Dockerfile <<EOF
@@ -46,12 +45,17 @@ jobs:
               chmod 777 /build &&
               useradd -m -d /build -s /bin/bash pmos &&
               echo 'pmos ALL=(ALL) NOPASSWD:ALL' >> /etc/sudoers &&
-              chown -R pmos:pmos /home/pmos/pmaports &&
               chown -R pmos:pmos /home/pmos/.local/var/pmbootstrap &&
               chown -R pmos:pmos /tmp/out &&
               chown -R pmos:pmos /build &&
 
-              # 2. PREPARAR EL ARCHIVO DE CONFIGURACIÓN
+              # 2. EL TRUCO DEL SIGLO: Reemplazamos la carpeta montada por un symlink al repo oficial
+              rm -rf /home/pmos/pmaports &&
+              mkdir -p /home/pmos/real_pmaports &&
+              git clone https://gitlab.postmarketos.org/postmarketOS/pmaports.git /home/pmos/real_pmaports &&
+              ln -s /home/pmos/real_pmaports /home/pmos/pmaports &&
+
+              # 3. PREPARAR EL ARCHIVO DE CONFIGURACIÓN
               sudo -u pmos bash -c \"
                 mkdir -p /build/.config/pmbootstrap;
                 echo '[pmbootstrap]' > /build/.config/pmbootstrap/pmbootstrap.cfg;
@@ -62,19 +66,15 @@ jobs:
                 echo 'ui = console' >> /build/.config/pmbootstrap/pmbootstrap.cfg;
                 echo 'extra_space = 1500' >> /build/.config/pmbootstrap/pmbootstrap.cfg;
 
-                echo '[pmaports]' > /home/pmos/pmaports/pmaports.cfg;
-                echo 'version = 7' >> /home/pmos/pmaports/pmaports.cfg;
-                echo 'pmbootstrap_min_version = 1.29.0' >> /home/pmos/pmaports/pmaports.cfg;
-                echo 'channel = edge' >> /home/pmos/pmaports/pmaports.cfg;
-
-                # 3. EL TRUCO FINAL: Usamos --config para saltarnos el init por completo
+                # 4. EL TRUCO FINAL: Usamos --config para saltarnos el init por completo
+                # Ahora pmbootstrap usará el symlink, y el error de Git desaparecerá
                 /pmbootstrap/venv/bin/pmbootstrap --config /build/.config/pmbootstrap/pmbootstrap.cfg install --no-fde;
 
-                # 4. EXPORTAR LA IMAGEN
+                # 5. EXPORTAR LA IMAGEN
                 /pmbootstrap/venv/bin/pmbootstrap --config /build/.config/pmbootstrap/pmbootstrap.cfg export;
               \"
 
-              # 5. COPIAR LOS ARTEFACTOS
+              # 6. COPIAR LOS ARTEFACTOS
               cp -rv /home/pmos/.local/var/pmbootstrap/cache_http/images/* /tmp/out/ || true;
               cp -rv /tmp/postmarketOS-export/* /tmp/out/ || true;
             "

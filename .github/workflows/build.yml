@@ -26,13 +26,14 @@ jobs:
         run: |
           mkdir -p /home/runner/.local/var/pmbootstrap/cache_git
           
-          # Clonar el repo oficial con la rama master
+          # 1. Clonar el repo oficial en su ruta exacta.
+          # Esto evita que pmbootstrap intente clonarlo en una carpeta llamada 'edge'.
           git clone --branch master --depth 1 https://gitlab.postmarketos.org/postmarketOS/pmaports.git /home/runner/.local/var/pmbootstrap/cache_git/pmaports
           
-          # Copiar TU dispositivo al repo oficial
+          # 2. Copiar TU dispositivo al repo oficial
           cp -rf ${{ github.workspace }}/* /home/runner/.local/var/pmbootstrap/cache_git/pmaports/
           
-          # Crear pmaports.cfg
+          # 3. Crear pmaports.cfg
           cat > /home/runner/.local/var/pmbootstrap/cache_git/pmaports/pmaports.cfg <<EOF
           [pmaports]
           version = 7
@@ -45,7 +46,7 @@ jobs:
           mkdir -p /tmp/pmbootstrap_work
           mkdir -p /tmp/out
           
-          # Crear el archivo de configuración local
+          # 4. Crear el archivo de configuración local
           cat > ~/.config/pmbootstrap/pmbootstrap.cfg <<EOF
           [pmbootstrap]
           aports = /home/runner/.local/var/pmbootstrap/cache_git/pmaports
@@ -59,11 +60,11 @@ jobs:
           
       - name: Build (The Absolute Final Piece)
         run: |
-          # TRUCO FINAL: Usamos printf para responder a las preguntas del init.
-          # (El archivo ya existe, solo preguntará cosas simples)
-          printf "/tmp/pmbootstrap_work\nedge\nsamsung\ngts7fewifi\n" | pmbootstrap init
+          # TRUCO DEFINITIVO: Usamos el flag '--yes'.
+          # Esto es lo que salva el día. Le dice a pmbootstrap que acepte todas las configuraciones sin preguntar.
+          pmbootstrap init --yes
           
-          # Ahora que el init ha pasado, ejecutamos el install
+          # Ahora que el init ha pasado, ejecutamos el install sin errores
           pmbootstrap --details-to-stdout install --no-fde
           
           pmbootstrap export

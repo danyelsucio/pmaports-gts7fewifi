@@ -28,16 +28,21 @@ jobs:
             --security-opt apparmor:unconfined \
             pmos-toolbox \
             -c "
-              # 1. CREAMOS AL USUARIO pmos Y LE DAMOS PERMISOS
-              useradd -m -u 1000 -s /bin/bash pmos &&
+              # 1. CREAMOS UNA CARPETA DE TRABAJO NUEVA Y LIMPIA (/build) como root
+              mkdir -p /build &&
+              chmod 777 /build &&
+
+              # 2. CREAMOS AL USUARIO pmos Y LE DAMOS PERMISOS SOBRE /build
+              useradd -m -d /build -s /bin/bash pmos &&
               echo 'pmos ALL=(ALL) NOPASSWD:ALL' >> /etc/sudoers &&
-              
-              # 2. ARREGLAMOS PERMISOS DE LAS CARPETAS MONTADAS
+
+              # 3. ARREGLAMOS PERMISOS DE LAS CARPETAS MONTADAS
               chown -R pmos:pmos /home/pmos/pmaports &&
               chown -R pmos:pmos /home/pmos/.local/var/pmbootstrap &&
               chown -R pmos:pmos /tmp/out &&
+              chown -R pmos:pmos /build &&
 
-              # 3. EJECUTAMOS EL RESTO DE COMANDOS COMO EL USUARIO pmos
+              # 4. EJECUTAMOS EL RESTO DE COMANDOS COMO EL USUARIO pmos
               sudo -u pmos bash -c \"
                 echo '--- PASO 1: CONFIGURAR EL ENTORNO ---';
                 echo '[pmaports]' > /home/pmos/pmaports/pmaports.cfg;
@@ -46,30 +51,29 @@ jobs:
                 echo 'channel = edge' >> /home/pmos/pmaports/pmaports.cfg;
 
                 echo '--- PASO 2: DESCARGAR E INSTALAR PMBOOTSTRAP ---';
-                # CAMBIO DE RUTA: Ahora clonamos dentro de /home/pmos/pmbootstrap_src
-                git clone https://gitlab.postmarketos.org/postmarketOS/pmbootstrap.git /home/pmos/pmbootstrap_src &&
-                # CAMBIO DE RUTA: El venv también va dentro de /home/pmos/venv
-                python3 -m venv /home/pmos/venv &&
-                /home/pmos/venv/bin/pip install /home/pmos/pmbootstrap_src tomli;
+                # USAMOS LA CARPETA NUEVA /build PARA TODO
+                git clone https://gitlab.postmarketos.org/postmarketOS/pmbootstrap.git /build/pmbootstrap_src &&
+                python3 -m venv /build/venv &&
+                /build/venv/bin/pip install /build/pmbootstrap_src tomli;
 
                 echo '--- PASO 3: PREPARAR LA CONFIGURACIÓN DEL DISPOSITIVO ---';
-                mkdir -p /home/pmos/.config/pmbootstrap;
-                echo '[pmbootstrap]' > /home/pmos/.config/pmbootstrap/pmbootstrap.cfg;
-                echo 'aports = /home/pmos/pmaports' >> /home/pmos/.config/pmbootstrap/pmbootstrap.cfg;
-                echo 'work = /home/pmos/.local/var/pmbootstrap' >> /home/pmos/.config/pmbootstrap/pmbootstrap.cfg;
-                echo 'device = gts7fewifi' >> /home/pmos/.config/pmbootstrap/pmbootstrap.cfg;
-                echo 'channel = edge' >> /home/pmos/.config/pmbootstrap/pmbootstrap.cfg;
-                echo 'ui = console' >> /home/pmos/.config/pmbootstrap/pmbootstrap.cfg;
-                echo 'extra_space = 1500' >> /home/pmos/.config/pmbootstrap/pmbootstrap.cfg;
+                mkdir -p /build/.config/pmbootstrap;
+                echo '[pmbootstrap]' > /build/.config/pmbootstrap/pmbootstrap.cfg;
+                echo 'aports = /home/pmos/pmaports' >> /build/.config/pmbootstrap/pmbootstrap.cfg;
+                echo 'work = /home/pmos/.local/var/pmbootstrap' >> /build/.config/pmbootstrap/pmbootstrap.cfg;
+                echo 'device = gts7fewifi' >> /build/.config/pmbootstrap/pmbootstrap.cfg;
+                echo 'channel = edge' >> /build/.config/pmbootstrap/pmbootstrap.cfg;
+                echo 'ui = console' >> /build/.config/pmbootstrap/pmbootstrap.cfg;
+                echo 'extra_space = 1500' >> /build/.config/pmbootstrap/pmbootstrap.cfg;
 
                 echo '--- PASO 4: EL PASO DEL BOOTSTRAP (INIT) ---';
-                printf '/home/pmos/.local/var/pmbootstrap\nedge\nsamsung\ngts7fewifi\n' | /home/pmos/venv/bin/pmbootstrap --aports /home/pmos/pmaports init;
+                printf '/home/pmos/.local/var/pmbootstrap\nedge\nsamsung\ngts7fewifi\n' | /build/venv/bin/pmbootstrap --aports /home/pmos/pmaports init;
 
                 echo '--- PASO 5: COMPILAR (INSTALL) ---';
-                /home/pmos/venv/bin/pmbootstrap --aports /home/pmos/pmaports install --no-fde;
+                /build/venv/bin/pmbootstrap --aports /home/pmos/pmaports install --no-fde;
 
                 echo '--- PASO 6: EXPORTAR LA IMAGEN ---';
-                /home/pmos/venv/bin/pmbootstrap --aports /home/pmos/pmaports export;
+                /build/venv/bin/pmbootstrap --aports /home/pmos/pmaports export;
 
                 echo '--- PASO 7: COPIAR ARTEFACTOS ---';
                 cp -rv /home/pmos/.local/var/pmbootstrap/cache_http/images/* /tmp/out/ || true;

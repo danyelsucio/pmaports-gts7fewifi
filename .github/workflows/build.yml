@@ -20,7 +20,7 @@ jobs:
           pip3 install --user ./pmbootstrap
           echo "$HOME/.local/bin" >> $GITHUB_PATH
           
-      - name: Manual config setup and create pmaports.cfg
+      - name: Config setup and create pmaports.cfg
         run: |
           mkdir -p ~/.config/pmbootstrap
           mkdir -p /tmp/pmbootstrap_work
@@ -37,7 +37,7 @@ jobs:
           jobs = 2
           EOF
           
-          # Crear el archivo pmaports.cfg OBLIGATORIO en la raíz del repositorio clonado
+          # Crear el archivo pmaports.cfg OBLIGATORIO en la raíz
           cat > ${{ github.workspace }}/pmaports.cfg <<EOF
           [pmaports]
           version = 7
@@ -50,9 +50,12 @@ jobs:
           touch ~/.config/pmbootstrap/pmbootstrap_init_done
           
       - name: Build rootfs for gts7fewifi
+        env:
+          PMBOOTSTRAP_APORTS: ${{ github.workspace }}
         run: |
-          # Forzamos el uso de la ruta de aports durante el build
-          pmbootstrap --aports ${{ github.workspace }} install --no-fde
+          # Usamos la variable de entorno para evitar errores de Git.
+          # Ahora pmbootstrap usará la carpeta local sin intentar hacer fetch.
+          pmbootstrap install --no-fde
           pmbootstrap export
           
           mkdir -p /tmp/out

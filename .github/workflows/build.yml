@@ -1,4 +1,4 @@
-name: Manual Build Process (The Correct Order)
+name: Manual Build Process (CI Mode - Forced Device)
 on:
   push:
     branches: ["main", "master"]
@@ -55,14 +55,20 @@ jobs:
               echo 'pmbootstrap_min_version = 1.29.0' >> /home/pmos/pmaports_clean/pmaports.cfg &&
               echo 'channel = edge' >> /home/pmos/pmaports_clean/pmaports.cfg &&
 
-              # CAMBIO CRUCIAL: HACER EL INIT JUSTO DESPUÉS DE CONFIGURAR
+              # EL TRUCO DEFINITIVO: Variables de entorno para el init
               sudo -u pmos bash -c \"
-                # Inyectamos las respuestas AHORA MISMO, antes de que pmbootstrap pregunte
-                printf '/tmp/pmos_work\nedge\nsamsung\ngts7fewifi\n' | /pmbootstrap/venv/bin/pmbootstrap --aports /home/pmos/pmaports_clean init
+                export PMBOOTSTRAP_APORTS=/home/pmos/pmaports_clean
+                export PMBOOTSTRAP_DEVICE=gts7fewifi
+                export PMBOOTSTRAP_CHANNEL=edge
+                export PMBOOTSTRAP_WORK=/tmp/pmos_work
 
-                # AHORA ejecutamos el install
-                /pmbootstrap/venv/bin/pmbootstrap --aports /home/pmos/pmaports_clean install --no-fde
-                /pmbootstrap/venv/bin/pmbootstrap --aports /home/pmos/pmaports_clean export
+                mkdir -p /tmp/pmos_work
+                
+                # El init se ejecutará sin preguntar nada gracias a las variables de entorno
+                /pmbootstrap/venv/bin/pmbootstrap init --yes
+
+                /pmbootstrap/venv/bin/pmbootstrap install --no-fde
+                /pmbootstrap/venv/bin/pmbootstrap export
               \"
 
               cp -rv /tmp/pmos_work/cache_http/images/* /tmp/out/ || true;

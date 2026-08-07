@@ -10,7 +10,7 @@ on:
 jobs:
   build:
     # CAMBIO AQUÍ: Usamos la versión "mínima" para intentar coger un servidor libre antes
-    runs-on: ubuntu-24.04-core
+    runs-on: ubuntu-24.04
     
     steps:
     # 1. Descarga tu código

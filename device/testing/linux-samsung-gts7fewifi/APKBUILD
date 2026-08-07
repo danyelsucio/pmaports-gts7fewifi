@@ -1,4 +1,4 @@
-# Maintainer: Your Name <you@example.com>
+# Maintainer: danyelsucio
 pkgname=linux-samsung-gts7fewifi
 pkgver=5.4.210
 pkgrel=0
@@ -11,25 +11,32 @@ license="GPL-2.0-only"
 options="!strip !check !archcheck"
 makedepends="bash bc bison devicepkg-dev flex gcc gmp-dev libelf-dev mpc1-dev mpfr-dev openssl-dev perl python3"
 
-# Downstream kernel source from Samsung
-source="
-    https://github.com/danyelsucio/pmaports-gts7fewifi/raw/main/device/testing/linux-samsung-gts7fewifi/config-samsung-gts7fewifi.aarch64
-    kernel-5.4.patch
-"
+source="config-samsung-gts7fewifi.aarch64
+        kernel-5.4.patch"
 
 prepare() {
     default_prepare
 }
 
 build() {
-    # Usamos la herramienta de postmarketOS para generar el kernel
-    pmbootstrap build linux-samsung-gts7fewifi
+    # Generamos la configuración del kernel automáticamente si está vacía
+    if [ ! -s "$srcdir/config-samsung-gts7fewifi.aarch64" ]; then
+        echo "Generando configuración del kernel automáticamente..."
+        make defconfig
+        make menuconfig
+    else
+        echo "Usando configuración existente..."
+        make olddefconfig
+    fi
+    
+    # Compilamos el kernel (esto es lo que hace pmbootstrap realmente)
+    make -j$(nproc) Image.gz dtbs
 }
 
 package() {
     # Copiamos el kernel compilado
     mkdir -p "$pkgdir"/boot
-    cp "$builddir"/zImage "$pkgdir"/boot/
+    cp "$builddir"/arch/arm64/boot/Image.gz "$pkgdir"/boot/
 }
 
 sha512sums="

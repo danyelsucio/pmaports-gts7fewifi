@@ -1,4 +1,4 @@
-name: Manual Build Process (Cache Killer)
+name: Manual Build Process (The Unlock)
 on:
   push:
     branches: ["main", "master"]
@@ -9,72 +9,80 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Build custom pmbootstrap Docker image
+      - name: Build custom pmbootstrap Docker image (with tomli and kpartx)
         run: |
           docker system prune -af || true
-          cat > Dockerfile <<'EOF'
+          
+          cat > Dockerfile <<EOF
           FROM ubuntu:22.04
-          RUN apt-get update && apt-get install -y python3 python3-pip python3-venv git openssl device-tree-compiler bmap-tools sudo curl kpartx qemu-user-static
+          RUN apt-get update && apt-get install -y python3 python3-pip python3-venv git openssl device-tree-compiler bmap-tools sudo curl kpartx
           RUN git clone https://gitlab.postmarketos.org/postmarketOS/pmbootstrap.git /pmbootstrap
           RUN python3 -m venv /pmbootstrap/venv
           RUN /pmbootstrap/venv/bin/pip install /pmbootstrap tomli
           WORKDIR /work
           CMD ["/pmbootstrap/venv/bin/pmbootstrap"]
           EOF
-          docker build -t pmos-toolbox --no-cache.
+          
+          docker build -t pmos-toolbox --no-cache .
 
       - name: Execute the Ultimate Build Step
         run: |
-          mkdir -p /tmp/pmbootstrap_work
           mkdir -p /tmp/out
-          chmod 777 /tmp/pmbootstrap_work /tmp/out
-
-          UNIQUE_BASE="/work_base_$(date +%s)"
-          WORK_DIR="${UNIQUE_BASE}/pmos_work"
-
+          
           docker run --rm -t \
             --entrypoint bash \
             --user root \
             -v ${{ github.workspace }}:/home/pmos/mi_repo \
-            -v /tmp/pmbootstrap_work:${WORK_DIR} \
             -v /tmp/out:/tmp/out \
             --device /dev/fuse \
             --cap-add SYS_ADMIN \
             --security-opt apparmor:unconfined \
             pmos-toolbox \
             -c "
-              set -x
-              mkdir -p ${WORK_DIR}
-              chmod 777 ${UNIQUE_BASE} ${WORK_DIR} || true
-              mkdir -p /build && chmod 777 /build
-              id pmos || useradd -m -d /build -s /bin/bash pmos
-              echo 'pmos ALL=(ALL) NOPASSWD:ALL' >> /etc/sudoers
-              chown -R pmos:pmos /tmp/out /build ${UNIQUE_BASE} ${WORK_DIR} || true
+              # 1. CREAR EL USUARIO Y PERMISOS
+              mkdir -p /build &&
+              chmod 777 /build &&
+              useradd -m -d /build -s /bin/bash pmos &&
+              echo 'pmos ALL=(ALL) NOPASSWD:ALL' >> /etc/sudoers &&
+              chown -R pmos:pmos /tmp/out &&
+              chown -R pmos:pmos /build &&
 
-              rm -rf /home/pmos/pmaports_clean
-              git clone https://gitlab.postmarketos.org/postmarketOS/pmaports.git /home/pmos/pmaports_clean
-              mkdir -p /home/pmos/pmaports_clean/device/testing/
-              rm -rf /home/pmos/pmaports_clean/device/testing/device-samsung-gts7fewifi
-              cp -r /home/pmos/mi_repo /home/pmos/pmaports_clean/device/testing/device-samsung-gts7fewifi
-              chown -R pmos:pmos /home/pmos/pmaports_clean
+              # 2. CLONAR EL REPO OFICIAL
+              git clone https://gitlab.postmarketos.org/postmarketOS/pmaports.git /home/pmos/pmaports_clean &&
+              chown -R pmos:pmos /home/pmos/pmaports_clean &&
+              ln -s /home/pmos/mi_repo /home/pmos/pmaports_clean/pmaports-gts7fewifi &&
 
+              # 3. CREAR pmaports.cfg
+              echo '[pmaports]' > /home/pmos/pmaports_clean/pmaports.cfg &&
+              echo 'version = 7' >> /home/pmos/pmaports_clean/pmaports.cfg &&
+              echo 'pmbootstrap_min_version = 1.29.0' >> /home/pmos/pmaports_clean/pmaports.cfg &&
+              echo 'channel = edge' >> /home/pmos/pmaports_clean/pmaports.cfg &&
+
+              # 4. CREAR Y DAR PERMISOS A LA CARPETA DE TRABAJO
+              mkdir -p /tmp/pmos_work &&
+              chown -R pmos:pmos /tmp/pmos_work &&
+
+              # 5. CONFIGURAR TODO COMO pmos
               sudo -u pmos bash -c \"
-                set -x
-                rm -rf /build/.config /build/.local
-                mkdir -p /build
-                # ORDEN CORRECTO: work=ENTER, aports=ENTER, channel=ENTER, vendor=samsung, device=gts7fewifi
-                printf '\n\n\nsamsung\ngts7fewifi\n\ny\nconsole\n\n\n\n\n\n' | /pmbootstrap/venv/bin/pmbootstrap --aports /home/pmos/pmaports_clean --work ${WORK_DIR} init
+                mkdir -p /build/.config/pmbootstrap;
+                echo '[pmbootstrap]' > /build/.config/pmbootstrap/pmbootstrap.cfg;
+                echo 'aports = /home/pmos/pmaports_clean' >> /build/.config/pmbootstrap/pmbootstrap.cfg;
+                echo 'work = /tmp/pmos_work' >> /build/.config/pmbootstrap/pmbootstrap.cfg;
+                echo 'device = gts7fewifi' >> /build/.config/pmbootstrap/pmbootstrap.cfg;
+                echo 'channel = edge' >> /build/.config/pmbootstrap/pmbootstrap.cfg;
+                echo 'ui = console' >> /build/.config/pmbootstrap/pmbootstrap.cfg;
+                echo 'extra_space = 1500' >> /build/.config/pmbootstrap/pmbootstrap.cfg;
 
-                /pmbootstrap/venv/bin/pmbootstrap --aports /home/pmos/pmaports_clean --work ${WORK_DIR} config extra_space 1500
+                # 6. INSTALACIÓN
+                /pmbootstrap/venv/bin/pmbootstrap --config /build/.config/pmbootstrap/pmbootstrap.cfg install --no-fde;
 
-                /pmbootstrap/venv/bin/pmbootstrap --aports /home/pmos/pmaports_clean --work ${WORK_DIR} install --no-fde
-                /pmbootstrap/venv/bin/pmbootstrap --aports /home/pmos/pmaports_clean --work ${WORK_DIR} export
+                # 7. EXPORTACIÓN
+                /pmbootstrap/venv/bin/pmbootstrap --config /build/.config/pmbootstrap/pmbootstrap.cfg export;
               \"
-              cp -rv /build/.local/var/pmbootstrap/cache_http/images/* /tmp/out/ 2>/dev/null || true
-              cp -rv /tmp/postmarketOS-export/* /tmp/out/ 2>/dev/null || true
-              cp -rv ${WORK_DIR}/chroot_native/tmp/postmarketOS-export/* /tmp/out/ 2>/dev/null || true
-              find ${WORK_DIR} -maxdepth 6 -type f \( -name '*.img' -o -name '*.zip' \) | xargs -I{} cp -v {} /tmp/out/ 2>/dev/null || true
-              ls -lhR /tmp/out/ | head -n 100
+
+              # 8. COPIAR ARTEFACTOS
+              cp -rv /tmp/pmos_work/cache_http/images/* /tmp/out/ || true;
+              cp -rv /tmp/postmarketOS-export/* /tmp/out/ || true;
             "
 
       - name: Upload final image

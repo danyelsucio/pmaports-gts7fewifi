@@ -51,7 +51,6 @@ jobs:
                 /build/venv/bin/pip install /build/pmbootstrap_src tomli;
 
                 echo '--- PASO 3: PREPARAR LA CONFIGURACIÓN DEL DISPOSITIVO ---';
-                # Forzamos la ruta del work en el archivo de configuración para que no intente crear /work
                 mkdir -p /build/.config/pmbootstrap;
                 echo '[pmbootstrap]' > /build/.config/pmbootstrap/pmbootstrap.cfg;
                 echo 'aports = /home/pmos/pmaports' >> /build/.config/pmbootstrap/pmbootstrap.cfg;
@@ -65,8 +64,11 @@ jobs:
                 printf '/home/pmos/.local/var/pmbootstrap\nedge\nsamsung\ngts7fewifi\n' | /build/venv/bin/pmbootstrap --aports /home/pmos/pmaports init;
 
                 echo '--- PASO 5: COMPILAR (INSTALL) ---';
-                # FIX PARA EL ERROR DE GIT: Usamos set-url (porque el remote ya existe)
-                cd /home/pmos/pmaports && git remote set-url origin https://gitlab.postmarketos.org/postmarketOS/pmaports.git && git fetch origin master --depth 1;
+                # FIX PARA EL ERROR DE GIT: Creamos la rama main y el remote origin
+                cd /home/pmos/pmaports &&
+                git remote set-url origin https://gitlab.postmarketos.org/postmarketOS/pmaports.git &&
+                git fetch origin master --depth 1 &&
+                git checkout -b main --track origin/master;
                 /build/venv/bin/pmbootstrap --aports /home/pmos/pmaports install --no-fde;
 
                 echo '--- PASO 6: EXPORTAR LA IMAGEN ---';

@@ -19,20 +19,17 @@ jobs:
           python3 -m venv venv
           source venv/bin/activate
           
-          # Instalamos la rama main para tener la última versión
+          # Instalamos la rama main (3.11.1) como antes
           pip install "git+https://gitlab.postmarketos.org/postmarketOS/pmbootstrap.git@main"
           echo "$PWD/venv/bin" >> $GITHUB_PATH
           
       - name: Configure environment and build
-        env:
-          # LA CLAVE DE LA BÓVEDA. Esto silencia TODOS los prompts y errores de EOF.
-          PMBOOTSTRAP_CI: "1"
         run: |
           mkdir -p ~/.config/pmbootstrap
           mkdir -p /tmp/pmbootstrap_work
           mkdir -p /tmp/out
           
-          # 1. Crear el archivo de configuración (con el dispositivo correcto)
+          # 1. Crear el archivo de configuración completo
           cat > ~/.config/pmbootstrap/pmbootstrap.cfg <<EOF
           [pmbootstrap]
           aports = ${{ github.workspace }}
@@ -58,14 +55,15 @@ jobs:
           git remote set-url origin https://gitlab.postmarketos.org/postmarketOS/pmaports.git
           git fetch origin master --depth 1
           
-          # 4. Ejecutar el init sin interacción. PMBOOTSTRAP_CI lo hará callar.
-          pmbootstrap init
+          # 4. EL TRUCO FINAL QUE LO RESUELVE TODO:
+          # Usamos 'echo' para responder a la pregunta del work path (evita el EOF).
+          # Y ponemos '--details-to-stdout' global, ANTES del comando install.
+          echo "/tmp/pmbootstrap_work" | pmbootstrap --aports ${{ github.workspace }} --details-to-stdout install --no-fde
           
-          # 5. Iniciar la compilación (ya no da errores de flag, está en modo CI)
-          pmbootstrap install --no-fde
+          # 5. Exportar
           pmbootstrap export
           
-          # 6. Mover artefactos
+          # 6. Copiar artefactos
           cp -rv /tmp/postmarketOS-export/* /tmp/out/ || true
           
       - name: Upload artifact

@@ -1,4 +1,4 @@
-name: Manual Build Process (No Volume - In Memory)
+name: Manual Build Process (Symlink Workaround)
 on:
   push:
     branches: ["main", "master"]
@@ -28,10 +28,7 @@ jobs:
       - name: Execute the Ultimate Build Step
         run: |
           mkdir -p /tmp/out
-          # Nombre de carpeta único (la crearemos dentro del contenedor)
-          WORK_DIR="/tmp/work_$(date +%s)"
           
-          # Ejecutamos el contenedor SIN montar el volumen de trabajo
           docker run --rm -t \
             --entrypoint bash \
             --user root \
@@ -65,15 +62,17 @@ jobs:
                 mkdir -p /build/.config/pmbootstrap &&
                 echo '[pmbootstrap]' > /build/.config/pmbootstrap/pmbootstrap.cfg &&
                 echo 'aports = /home/pmos/pmaports_clean' >> /build/.config/pmbootstrap/pmbootstrap.cfg &&
-                echo 'work = ${WORK_DIR}' >> /build/.config/pmbootstrap/pmbootstrap.cfg &&
+                echo 'work = /tmp/ram_work' >> /build/.config/pmbootstrap/pmbootstrap.cfg &&
                 echo 'device = gts7fewifi' >> /build/.config/pmbootstrap/pmbootstrap.cfg &&
                 echo 'channel = edge' >> /build/.config/pmbootstrap/pmbootstrap.cfg &&
                 echo 'ui = console' >> /build/.config/pmbootstrap/pmbootstrap.cfg &&
                 echo 'extra_space = 1500' >> /build/.config/pmbootstrap/pmbootstrap.cfg &&
 
-                # 5. CREAMOS LA CARPETA DE TRABAJO EN MEMORIA
-                mkdir -p ${WORK_DIR} &&
-                chown -R pmos:pmos ${WORK_DIR} &&
+                # 5. ENLACE SIMBÓLICO
+                rm -rf /tmp/ram_work &&
+                mkdir -p /tmp/ram_work &&
+                chown -R pmos:pmos /tmp/ram_work &&
+                ln -s /tmp/ram_work /tmp/pmos_work &&
 
                 # 6. INSTALACIÓN
                 /pmbootstrap/venv/bin/pmbootstrap --config /build/.config/pmbootstrap/pmbootstrap.cfg install --no-fde &&
@@ -81,6 +80,12 @@ jobs:
               \"
 
               # 7. COPIAR ARTEFACTOS
-              cp -rv ${WORK_DIR}/cache_http/images/* /tmp/out/ || true;
+              cp -rv /tmp/ram_work/cache_http/images/* /tmp/out/ || true;
               cp -rv /tmp/postmarketOS-export/* /tmp/out/ || true;
             "
+
+      - name: Upload final image
+        uses: actions/upload-artifact@v4
+        with:
+          name: pmos-gts7fewifi-image
+          path: /tmp/out/

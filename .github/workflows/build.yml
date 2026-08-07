@@ -14,25 +14,25 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y git bmap-tools
           
-      - name: Build rootfs using official pmbootstrap Docker image
+      - name: Build rootfs using ghcr.io pmbootstrap image
         run: |
           chmod -R 755 ${{ github.workspace }}
           
-          # Usamos la imagen del Docker Hub oficial (NO tiene restricciones de acceso)
+          # CAMBIO CLAVE: Usamos ghcr.io (GitHub Container Registry)
+          # Esto evita los errores de denegación de acceso de GitLab y Docker Hub.
           docker run --rm -t \
             -v ${{ github.workspace }}:/home/pmos/pmaports \
             -v /tmp/pmbootstrap_work:/home/pmos/.local/var/pmbootstrap \
             --device /dev/fuse \
             --cap-add SYS_ADMIN \
             --security-opt apparmor:unconfined \
-            postmarketos/pmbootstrap:latest \
+            ghcr.io/postmarketos/pmbootstrap:latest \
             sh -c "
               echo '[pmaports]' > /home/pmos/pmaports/pmaports.cfg &&
               echo 'version = 7' >> /home/pmos/pmaports/pmaports.cfg &&
               echo 'pmbootstrap_min_version = 1.29.0' >> /home/pmos/pmaports/pmaports.cfg &&
               echo 'channel = edge' >> /home/pmos/pmaports/pmaports.cfg &&
               
-              # Usamos la versión estable para evitar el error de EOF
               pmbootstrap --aports /home/pmos/pmaports --work /home/pmos/.local/var/pmbootstrap init --yes --device gts7fewifi --channel edge &&
               pmbootstrap --aports /home/pmos/pmaports --work /home/pmos/.local/var/pmbootstrap install --no-fde &&
               pmbootstrap --aports /home/pmos/pmaports --work /home/pmos/.local/var/pmbootstrap export

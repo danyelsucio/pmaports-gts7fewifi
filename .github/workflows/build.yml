@@ -30,14 +30,12 @@ jobs:
           mkdir -p /tmp/git_pmaports
           
           # 1. Clonar el repositorio oficial de pmaports en una carpeta temporal.
-          # Esto es lo que pmbootstrap espera encontrar.
           git clone --depth 1 https://gitlab.postmarketos.org/postmarketOS/pmaports.git /tmp/git_pmaports
           
-          # 2. Crear un enlace simbólico (acceso directo) en tu espacio de trabajo hacia el clon oficial.
-          # Cuando pmbootstrap intente leer "origin/main", verá la carpeta oficial en lugar de tu fork.
+          # 2. Crear un enlace simbólico en tu espacio de trabajo hacia el clon oficial.
           ln -s /tmp/git_pmaports ${{ github.workspace }}/pmaports
           
-          # 3. Crear el archivo de configuración completo (apuntando al enlace simbólico)
+          # 3. Crear el archivo de configuración (apuntando al enlace)
           cat > ~/.config/pmbootstrap/pmbootstrap.cfg <<EOF
           [pmbootstrap]
           aports = ${{ github.workspace }}/pmaports
@@ -49,7 +47,7 @@ jobs:
           jobs = 2
           EOF
           
-          # 4. (Opcional) Mantener tu pmaports.cfg local para el dispositivo
+          # 4. Crear pmaports.cfg local
           cat > ${{ github.workspace }}/pmaports.cfg <<EOF
           [pmaports]
           version = 7
@@ -58,10 +56,15 @@ jobs:
           supported_root_filesystems = ext4,f2fs,btrfs
           EOF
           
-          # 5. EL TRUCO FINAL: Respondemos al work path por adelantado y ejecutamos el install.
-          echo "/tmp/pmbootstrap_work" | pmbootstrap --aports ${{ github.workspace }}/pmaports --details-to-stdout install --no-fde
+          # 5. EL TRUCO DEFINITIVO PARA EL INIT:
+          # Inyectamos las respuestas de las 3 preguntas que hace el init (Work path, Device, Channel) usando echo.
+          # Esto evita por completo el EOFError.
+          printf "/tmp/pmbootstrap_work\ngts7fewifi\nedge\n" | pmbootstrap --aports ${{ github.workspace }}/pmaports init
           
-          # 6. Exportar los artefactos
+          # 6. Ahora que el init ha generado la configuración, ejecutamos el install sin problemas.
+          pmbootstrap --aports ${{ github.workspace }}/pmaports --details-to-stdout install --no-fde
+          
+          # 7. Exportar artefactos
           pmbootstrap export
           cp -rv /tmp/postmarketOS-export/* /tmp/out/ || true
           

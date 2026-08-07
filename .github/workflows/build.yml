@@ -1,4 +1,4 @@
-name: Manual Build Process (Pre-Create Work Dir)
+name: Manual Build Process (777 Work Dir)
 on:
   push:
     branches: ["main", "master"]
@@ -45,9 +45,9 @@ jobs:
               echo 'pmos ALL=(ALL) NOPASSWD:ALL' >> /etc/sudoers &&
               chown -R pmos:pmos /build &&
 
-              # 2. CREAR LA CARPETA DE TRABAJO ANTES DE QUE PMBOOTSTRAP LA PIDA
+              # 2. CREAR LA CARPETA DE TRABAJO CON PERMISOS 777 (TOTALES)
               mkdir -p /build/.local/var/pmbootstrap &&
-              chown -R pmos:pmos /build/.local &&
+              chmod -R 777 /build/.local &&
 
               # 3. CLONAR EL REPO OFICIAL Y ENLAZAR TU DISPOSITIVO
               git clone https://gitlab.postmarketos.org/postmarketOS/pmaports.git /home/pmos/pmaports_clean &&

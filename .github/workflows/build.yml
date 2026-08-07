@@ -1,4 +1,4 @@
-name: Manual Build Process (Ultimate Git Fix v2)
+name: Manual Build Process (Ultimate Git Fix v3)
 on:
   push:
     branches: ["main", "master"]
@@ -55,8 +55,9 @@ jobs:
               echo 'pmbootstrap_min_version = 1.29.0' >> /home/pmos/pmaports/pmaports.cfg &&
               echo 'channel = edge' >> /home/pmos/pmaports/pmaports.cfg &&
 
-              # 3. AÑADIR EL REMOTE ORIGIN (TRUCO DEFINITIVO)
+              # 3. ARREGLO DE SEGURIDAD DE GIT Y AÑADIR REMOTE
               cd /home/pmos/pmaports &&
+              git config --global --add safe.directory /home/pmos/pmaports &&
               git remote add origin https://gitlab.postmarketos.org/postmarketOS/pmaports.git &&
 
               # 4. PREPARAR EL ARCHIVO DE CONFIGURACIÓN

@@ -1,4 +1,4 @@
-name: Manual Build Process (Final Final)
+name: Manual Build Process (The Var Tmp)
 on:
   push:
     branches: ["main", "master"]
@@ -39,11 +39,9 @@ jobs:
             --security-opt apparmor:unconfined \
             pmos-toolbox \
             -c "
-              # 1. CREAR EL USUARIO Y SU HOME CON PERMISOS TOTALES
+              # 1. CREAR EL USUARIO
               useradd -m -d /home/pmos -s /bin/bash pmos &&
               echo 'pmos ALL=(ALL) NOPASSWD:ALL' >> /etc/sudoers &&
-              chown -R pmos:pmos /home/pmos &&
-              chmod 777 /home/pmos &&
 
               # 2. CLONAR EL REPO OFICIAL Y ENLAZAR TU DISPOSITIVO
               git clone https://gitlab.postmarketos.org/postmarketOS/pmaports.git /home/pmos/pmaports_clean &&
@@ -56,14 +54,14 @@ jobs:
               echo 'pmbootstrap_min_version = 1.29.0' >> /home/pmos/pmaports_clean/pmaports.cfg &&
               echo 'channel = edge' >> /home/pmos/pmaports_clean/pmaports.cfg &&
 
-              # 4. EL TRUCO DEFINITIVO: USAMOS /home/pmos/work SIN VOLÚMENES
+              # 4. EL TRUCO DEFINITIVO: /var/tmp NO TIENE BUG DE OVERLAYFS
               sudo -u pmos bash -c \"
-                yes | /pmbootstrap/venv/bin/pmbootstrap --work /home/pmos/work init &&
-                /pmbootstrap/venv/bin/pmbootstrap --work /home/pmos/work --aports /home/pmos/pmaports_clean install --no-fde &&
-                /pmbootstrap/venv/bin/pmbootstrap --work /home/pmos/work --aports /home/pmos/pmaports_clean export
+                yes | /pmbootstrap/venv/bin/pmbootstrap --work /var/tmp/pmos_work init &&
+                /pmbootstrap/venv/bin/pmbootstrap --work /var/tmp/pmos_work --aports /home/pmos/pmaports_clean install --no-fde &&
+                /pmbootstrap/venv/bin/pmbootstrap --work /var/tmp/pmos_work --aports /home/pmos/pmaports_clean export
               \"
 
               # 5. COPIAR ARTEFACTOS
-              cp -rv /home/pmos/work/cache_http/images/* /tmp/out/ || true;
+              cp -rv /var/tmp/pmos_work/cache_http/images/* /tmp/out/ || true;
               cp -rv /tmp/postmarketOS-export/* /tmp/out/ || true;
             "

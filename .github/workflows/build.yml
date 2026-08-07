@@ -8,46 +8,45 @@ jobs:
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
+      
       - name: Install system dependencies
         run: |
           sudo apt-get update
           sudo apt-get install -y python3-pip git openssl device-tree-compiler bmap-tools
+          
       - name: Install pmbootstrap from source
         run: |
           git clone https://gitlab.postmarketos.org/postmarketOS/pmbootstrap.git
           pip3 install --user ./pmbootstrap
           echo "$HOME/.local/bin" >> $GITHUB_PATH
-      - name: Create configs manually
+          
+      - name: Initialize pmbootstrap config (Fixes format error)
         run: |
           mkdir -p /tmp/pmbootstrap_work
           cd ${{ github.workspace }}
+          
+          # Configure git remote for pmaports
           git remote add origin https://gitlab.postmarketos.org/postmarketOS/pmaports.git 2>/dev/null || git remote set-url origin https://gitlab.postmarketos.org/postmarketOS/pmaports.git
           git fetch origin main --depth 1 || git fetch origin master --depth 1
-          if [! -f channels.cfg ]; then
-            curl -L https://gitlab.postmarketos.org/postmarketOS/pmaports/-/raw/master/channels.cfg -o channels.cfg || printf "[channels]\n[channels.edge]\ndescription = Rolling\nbranch = master\n" > channels.cfg
-          fi
-          cat > ${{ github.workspace }}/pmaports.cfg <<'EOF'
-          [pmaports]
-          version = 7
-          pmbootstrap_min_version = 1.29.0
-          channel = edge
-          supported_root_filesystems = ext4,f2fs,btrfs
-          EOF
-          mkdir -p ~/.config/pmbootstrap
-          cat > ~/.config/pmbootstrap.cfg <<EOF
-          [pmbootstrap]
-          aports = ${{ github.workspace }}
-          work = /tmp/pmbootstrap_work
-          is_default_channel = False
-          device = gts7fewifi
-          EOF
-          cp ~/.config/pmbootstrap.cfg ~/.config/pmbootstrap/pmbootstrap.cfg
+          
+          # Generate the new config using pmbootstrap init (non-interactive)
+          # This writes the correct format required by v3.11.1
+          pmbootstrap init --yes \
+            --aports ${{ github.workspace }} \
+            --work /tmp/pmbootstrap_work \
+            --device gts7fewifi \
+            --channel edge \
+            --no-fde
+            
       - name: Build rootfs for gts7fewifi
         run: |
-          pmbootstrap --aports ${{ github.workspace }} --work /tmp/pmbootstrap_work install --no-fde
-          pmbootstrap --aports ${{ github.workspace }} --work /tmp/pmbootstrap_work export
+          # Config is already set, just run the commands
+          pmbootstrap install --no-fde
+          pmbootstrap export
+          
           mkdir -p /tmp/out
           cp -rv /tmp/postmarketOS-export/* /tmp/out/ || true
+          
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:

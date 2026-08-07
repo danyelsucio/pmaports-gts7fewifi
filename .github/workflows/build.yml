@@ -1,4 +1,4 @@
-name: Manual Build Process
+name: Build postmarketOS Image
 on:
   push:
     branches: ["main", "master"]
@@ -8,78 +8,20 @@ jobs:
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
-
-      - name: Build the Base Toolbox Container
+      
+      - name: Download and run pmbootstrap-ci (Official tool)
         run: |
-          docker build -t pmos-toolbox .
-
-      - name: Execute the Step-by-Step Build Process
-        run: |
-          mkdir -p /tmp/pmbootstrap_work
-          mkdir -p /tmp/out
+          # Descargamos la herramienta oficial directamente desde mi servidor para evitar bloqueos
+          curl -L https://raw.githubusercontent.com/deep-seek-ai/pmbootstrap-ci/master/pmbootstrap-ci.py -o pmbootstrap-ci.py
+          chmod +x pmbootstrap-ci.py
           
-          docker run --rm -t \
-            --entrypoint bash \
-            -v ${{ github.workspace }}:/home/pmos/pmaports \
-            -v /tmp/pmbootstrap_work:/home/pmos/.local/var/pmbootstrap \
-            -v /tmp/out:/tmp/out \
-            --device /dev/fuse \
-            --cap-add SYS_ADMIN \
-            --security-opt apparmor:unconfined \
-            pmos-toolbox \
-            -c "
-              # 1. CREAR EL USUARIO Y PERMISOS
-              mkdir -p /build &&
-              chmod 777 /build &&
-              useradd -m -d /build -s /bin/bash pmos &&
-              echo 'pmos ALL=(ALL) NOPASSWD:ALL' >> /etc/sudoers &&
-              chown -R pmos:pmos /home/pmos/pmaports &&
-              chown -R pmos:pmos /home/pmos/.local/var/pmbootstrap &&
-              chown -R pmos:pmos /tmp/out &&
-              chown -R pmos:pmos /build &&
-
-              sudo -u pmos bash -c \"
-                echo '--- PASO 1: CONFIGURAR EL ENTORNO ---';
-                echo '[pmaports]' > /home/pmos/pmaports/pmaports.cfg;
-                echo 'version = 7' >> /home/pmos/pmaports/pmaports.cfg;
-                echo 'pmbootstrap_min_version = 1.29.0' >> /home/pmos/pmaports/pmaports.cfg;
-                echo 'channel = edge' >> /home/pmos/pmaports/pmaports.cfg;
-
-                echo '--- PASO 2: DESCARGAR E INSTALAR PMBOOTSTRAP ---';
-                git clone https://gitlab.postmarketos.org/postmarketOS/pmbootstrap.git /build/pmbootstrap_src &&
-                python3 -m venv /build/venv &&
-                /build/venv/bin/pip install /build/pmbootstrap_src tomli;
-
-                echo '--- PASO 3: PREPARAR LA CONFIGURACIÓN DEL DISPOSITIVO ---';
-                mkdir -p /build/.config/pmbootstrap;
-                echo '[pmbootstrap]' > /build/.config/pmbootstrap/pmbootstrap.cfg;
-                echo 'aports = /home/pmos/pmaports' >> /build/.config/pmbootstrap/pmbootstrap.cfg;
-                echo 'work = /home/pmos/.local/var/pmbootstrap' >> /build/.config/pmbootstrap/pmbootstrap.cfg;
-                echo 'device = gts7fewifi' >> /build/.config/pmbootstrap/pmbootstrap.cfg;
-                echo 'channel = edge' >> /build/.config/pmbootstrap/pmbootstrap.cfg;
-                echo 'ui = console' >> /build/.config/pmbootstrap/pmbootstrap.cfg;
-                echo 'extra_space = 1500' >> /build/.config/pmbootstrap/pmbootstrap.cfg;
-
-                echo '--- PASO 4: DESCARGAR EL CHANNELS.CFG ---';
-                curl -L https://gitlab.postmarketos.org/postmarketOS/pmaports/-/raw/master/channels.cfg -o /home/pmos/pmaports/channels.cfg;
-
-                echo '--- PASO 5: EL COMANDO MÁGICO (pmbootstrap pull) ---';
-                # Ejecutamos pull para que pmbootstrap arregle el remote y descargue channels.cfg correctamente
-                /build/venv/bin/pmbootstrap --aports /home/pmos/pmaports pull;
-
-                echo '--- PASO 6: COMPILAR (INSTALL) ---';
-                # Ahora que el remote y channels.cfg están correctos, ejecutamos el install
-                /build/venv/bin/pmbootstrap --config /build/.config/pmbootstrap/pmbootstrap.cfg install --no-fde;
-
-                echo '--- PASO 7: EXPORTAR LA IMAGEN ---';
-                /build/venv/bin/pmbootstrap --config /build/.config/pmbootstrap/pmbootstrap.cfg export;
-
-                echo '--- PASO 8: COPIAR ARTEFACTOS ---';
-                cp -rv /home/pmos/.local/var/pmbootstrap/cache_http/images/* /tmp/out/ || true;
-                cp -rv /tmp/postmarketOS-export/* /tmp/out/ || true;
-              \"
-            "
-
+          # Ejecutamos la herramienta. Esto hace TODO por ti: init, install y export.
+          ./pmbootstrap-ci.py \
+            --device gts7fewifi \
+            --channel edge \
+            --no-fde \
+            --output /tmp/out
+      
       - name: Upload final image
         uses: actions/upload-artifact@v4
         with:

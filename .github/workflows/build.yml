@@ -23,15 +23,15 @@ jobs:
 
     - name: Initialize pmbootstrap
       run: |
-        mkdir -p ~/.config/pmbootstrap
-        echo -e "[pmbootstrap]\naports = ${{ github.workspace }}\nwork = /tmp/pmbootstrap_work" > ~/.config/pmbootstrap/pmbootstrap.cfg
-        pmbootstrap --aports ${{ github.workspace }} config device gts7fewifi
-        pmbootstrap --aports ${{ github.workspace }} status
+        mkdir -p /tmp/pmbootstrap_work
+        printf '\n' | pmbootstrap --work /tmp/pmbootstrap_work --aports ${{ github.workspace }} init || true
+        pmbootstrap --work /tmp/pmbootstrap_work --aports ${{ github.workspace }} config device gts7fewifi
+        pmbootstrap --work /tmp/pmbootstrap_work --aports ${{ github.workspace }} status
 
     - name: Build rootfs for gts7fewifi
       run: |
-        pmbootstrap --aports ${{ github.workspace }} install
-        pmbootstrap --aports ${{ github.workspace }} export
+        pmbootstrap --work /tmp/pmbootstrap_work --aports ${{ github.workspace }} install
+        pmbootstrap --work /tmp/pmbootstrap_work --aports ${{ github.workspace }} export
         ls -lh /tmp/postmarketOS-export/
         mkdir -p /tmp/out
         cp -rv /tmp/postmarketOS-export/* /tmp/out/ || true

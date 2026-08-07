@@ -1,4 +1,4 @@
-name: Manual Build Process with tomli fix
+name: Manual Build Process with User fix
 on:
   push:
     branches: ["main", "master"]
@@ -18,7 +18,9 @@ jobs:
           mkdir -p /tmp/pmbootstrap_work
           mkdir -p /tmp/out
           
+          # CAMBIO CLAVE: Añadimos --user 1000:1000 para no ejecutar como root
           docker run --rm -t \
+            --user 1000:1000 \
             --entrypoint bash \
             -v ${{ github.workspace }}:/home/pmos/pmaports \
             -v /tmp/pmbootstrap_work:/home/pmos/.local/var/pmbootstrap \
@@ -37,7 +39,6 @@ jobs:
               echo '--- PASO 2: DESCARGAR E INSTALAR PMBOOTSTRAP ---'
               git clone https://gitlab.postmarketos.org/postmarketOS/pmbootstrap.git /pmbootstrap_src &&
               python3 -m venv /venv &&
-              # AÑADIMOS 'tomli' AL ENTORNO VIRTUAL
               /venv/bin/pip install /pmbootstrap_src tomli &&
 
               echo '--- PASO 3: PREPARAR LA CONFIGURACIÓN DEL DISPOSITIVO ---'
@@ -54,7 +55,8 @@ jobs:
               printf '/home/pmos/.local/var/pmbootstrap\nedge\nsamsung\ngts7fewifi\n' | /venv/bin/pmbootstrap --aports /home/pmos/pmaports init &&
 
               echo '--- PASO 5: COMPILAR (INSTALL) ---'
-              /venv/bin/pmbootstrap --aports /home/pmos/pmaports install --no-fde --details-to-stdout &&
+              # Quitamos --details-to-stdout porque en 3.11.1 no existe
+              /venv/bin/pmbootstrap --aports /home/pmos/pmaports install --no-fde &&
 
               echo '--- PASO 6: EXPORTAR LA IMAGEN ---'
               /venv/bin/pmbootstrap --aports /home/pmos/pmaports export &&

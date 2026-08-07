@@ -1,4 +1,4 @@
-name: Manual Build Process (The Unlock)
+name: Manual Build Process (The Divine Method)
 on:
   push:
     branches: ["main", "master"]
@@ -58,26 +58,24 @@ jobs:
               echo 'pmbootstrap_min_version = 1.29.0' >> /home/pmos/pmaports_clean/pmaports.cfg &&
               echo 'channel = edge' >> /home/pmos/pmaports_clean/pmaports.cfg &&
 
-              # 4. CREAR Y DAR PERMISOS A LA CARPETA DE TRABAJO
-              mkdir -p /tmp/pmos_work &&
-              chown -R pmos:pmos /tmp/pmos_work &&
-
-              # 5. CONFIGURAR TODO COMO pmos
+              # 4. USAR VARIABLES DE ENTORNO PARA EL INIT (El método oficial)
               sudo -u pmos bash -c \"
-                mkdir -p /build/.config/pmbootstrap;
-                echo '[pmbootstrap]' > /build/.config/pmbootstrap/pmbootstrap.cfg;
-                echo 'aports = /home/pmos/pmaports_clean' >> /build/.config/pmbootstrap/pmbootstrap.cfg;
-                echo 'work = /tmp/pmos_work' >> /build/.config/pmbootstrap/pmbootstrap.cfg;
-                echo 'device = gts7fewifi' >> /build/.config/pmbootstrap/pmbootstrap.cfg;
-                echo 'channel = edge' >> /build/.config/pmbootstrap/pmbootstrap.cfg;
-                echo 'ui = console' >> /build/.config/pmbootstrap/pmbootstrap.cfg;
-                echo 'extra_space = 1500' >> /build/.config/pmbootstrap/pmbootstrap.cfg;
+                export PMBOOTSTRAP_APORTS=/home/pmos/pmaports_clean
+                export PMBOOTSTRAP_WORK=/tmp/pmos_work
+                export PMBOOTSTRAP_DEVICE=gts7fewifi
+                export PMBOOTSTRAP_CHANNEL=edge
+                export PMBOOTSTRAP_UI=console
+                export PMBOOTSTRAP_EXTRA_SPACE=1500
+
+                # 5. EJECUTAR EL INIT CON --yes PARA EVITAR PREGUNTAS
+                mkdir -p /tmp/pmos_work &&
+                /pmbootstrap/venv/bin/pmbootstrap init --yes --device gts7fewifi --channel edge
 
                 # 6. INSTALACIÓN
-                /pmbootstrap/venv/bin/pmbootstrap --config /build/.config/pmbootstrap/pmbootstrap.cfg install --no-fde;
+                /pmbootstrap/venv/bin/pmbootstrap install --no-fde
 
                 # 7. EXPORTACIÓN
-                /pmbootstrap/venv/bin/pmbootstrap --config /build/.config/pmbootstrap/pmbootstrap.cfg export;
+                /pmbootstrap/venv/bin/pmbootstrap export
               \"
 
               # 8. COPIAR ARTEFACTOS

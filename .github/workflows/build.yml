@@ -12,44 +12,28 @@ jobs:
       - name: Install system dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y python3-venv git openssl curl device-tree-compiler bmap-tools
+          sudo apt-get install -y python3-pip git openssl device-tree-compiler bmap-tools
           
-      - name: Setup Python venv and install pmbootstrap 3.9.0
+      - name: Install latest pmbootstrap (stable)
         run: |
-          python3 -m venv venv
-          source venv/bin/activate
+          # Instalamos la versión más reciente directamente desde el código fuente
+          git clone https://gitlab.postmarketos.org/postmarketOS/pmbootstrap.git
+          pip3 install --user ./pmbootstrap
+          echo "$HOME/.local/bin" >> $GITHUB_PATH
           
-          pip install "git+https://gitlab.postmarketos.org/postmarketOS/pmbootstrap.git@3.9.0"
-          echo "$PWD/venv/bin" >> $GITHUB_PATH
-          
-      - name: Prepare official pmaports repository
+      - name: Build rootfs for gts7fewifi
+        env:
+          # Esta variable anula el molesto error de Git de la versión actual
+          PMBOOTSTRAP_SKIP_GIT_REQUIREMENT: "1"
         run: |
-          mkdir -p /home/runner/.local/var/pmbootstrap/cache_git
-          
-          # 1. Clonar el repo oficial en su ruta exacta.
-          # Esto evita que pmbootstrap intente clonarlo en una carpeta llamada 'edge'.
-          git clone --branch master --depth 1 https://gitlab.postmarketos.org/postmarketOS/pmaports.git /home/runner/.local/var/pmbootstrap/cache_git/pmaports
-          
-          # 2. Copiar TU dispositivo al repo oficial
-          cp -rf ${{ github.workspace }}/* /home/runner/.local/var/pmbootstrap/cache_git/pmaports/
-          
-          # 3. Crear pmaports.cfg
-          cat > /home/runner/.local/var/pmbootstrap/cache_git/pmaports/pmaports.cfg <<EOF
-          [pmaports]
-          version = 7
-          pmbootstrap_min_version = 3.9.0
-          channel = edge
-          supported_root_filesystems = ext4,f2fs,btrfs
-          EOF
-          
           mkdir -p ~/.config/pmbootstrap
           mkdir -p /tmp/pmbootstrap_work
           mkdir -p /tmp/out
           
-          # 4. Crear el archivo de configuración local
+          # 1. Crear el archivo de configuración
           cat > ~/.config/pmbootstrap/pmbootstrap.cfg <<EOF
           [pmbootstrap]
-          aports = /home/runner/.local/var/pmbootstrap/cache_git/pmaports
+          aports = ${{ github.workspace }}
           work = /tmp/pmbootstrap_work
           device = gts7fewifi
           channel = edge
@@ -58,14 +42,18 @@ jobs:
           jobs = 2
           EOF
           
-      - name: Build (The Absolute Final Piece)
-        run: |
-          # TRUCO DEFINITIVO: Usamos el flag '--yes'.
-          # Esto es lo que salva el día. Le dice a pmbootstrap que acepte todas las configuraciones sin preguntar.
-          pmbootstrap init --yes
+          # 2. Crear pmaports.cfg
+          cat > ${{ github.workspace }}/pmaports.cfg <<EOF
+          [pmaports]
+          version = 7
+          pmbootstrap_min_version = 1.29.0
+          channel = edge
+          supported_root_filesystems = ext4,f2fs,btrfs
+          EOF
           
-          # Ahora que el init ha pasado, ejecutamos el install sin errores
-          pmbootstrap --details-to-stdout install --no-fde
+          # 3. Usamos --config para saltarnos el init y el EOFError
+          # Y usamos --details-to-stdout (que SÍ existe en la versión actual)
+          pmbootstrap --config ~/.config/pmbootstrap/pmbootstrap.cfg --details-to-stdout install --no-fde
           
           pmbootstrap export
           cp -rv /tmp/postmarketOS-export/* /tmp/out/ || true

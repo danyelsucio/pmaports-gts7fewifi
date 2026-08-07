@@ -21,17 +21,32 @@ jobs:
         pip3 install --user ./pmbootstrap
         echo "$HOME/.local/bin" >> $GITHUB_PATH
 
-    - name: Initialize pmbootstrap
+    - name: Create configs manually
       run: |
         mkdir -p /tmp/pmbootstrap_work
-        printf '\n' | pmbootstrap --work /tmp/pmbootstrap_work --aports ${{ github.workspace }} init || true
-        pmbootstrap --work /tmp/pmbootstrap_work --aports ${{ github.workspace }} config device gts7fewifi
-        pmbootstrap --work /tmp/pmbootstrap_work --aports ${{ github.workspace }} status
+        # Si tu repo no tiene pmaports.cfg, crealo
+        if [! -f "${{ github.workspace }}/pmaports.cfg" ]; then
+          echo -e "[pmaports]\nchannel = edge" > ${{ github.workspace }}/pmaports.cfg
+        fi
+        # Crea el config de pmbootstrap en los dos lugares donde lo busca
+        mkdir -p ~/.config/pmbootstrap
+        cat > ~/.config/pmbootstrap.cfg <<EOF
+        [pmbootstrap]
+        aports = ${{ github.workspace }}
+        work = /tmp/pmbootstrap_work
+        is_default_channel = False
+        device = gts7fewifi
+        kernel = gts7fewifi
+        EOF
+        cp ~/.config/pmbootstrap.cfg ~/.config/pmbootstrap/pmbootstrap.cfg
+        cat ~/.config/pmbootstrap.cfg
+        ls -la ${{ github.workspace }} | head -n 30
+        pmbootstrap --aports ${{ github.workspace }} --work /tmp/pmbootstrap_work status || true
 
     - name: Build rootfs for gts7fewifi
       run: |
-        pmbootstrap --work /tmp/pmbootstrap_work --aports ${{ github.workspace }} install
-        pmbootstrap --work /tmp/pmbootstrap_work --aports ${{ github.workspace }} export
+        pmbootstrap --aports ${{ github.workspace }} --work /tmp/pmbootstrap_work install --no-fde --no-recommends
+        pmbootstrap --aports ${{ github.workspace }} --work /tmp/pmbootstrap_work export
         ls -lh /tmp/postmarketOS-export/
         mkdir -p /tmp/out
         cp -rv /tmp/postmarketOS-export/* /tmp/out/ || true

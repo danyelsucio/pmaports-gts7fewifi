@@ -1,4 +1,4 @@
-name: Manual Build Process (Final Device - gts7fewifi)
+name: Manual Build Process (The Correct Order)
 on:
   push:
     branches: ["main", "master"]
@@ -55,15 +55,14 @@ jobs:
               echo 'pmbootstrap_min_version = 1.29.0' >> /home/pmos/pmaports_clean/pmaports.cfg &&
               echo 'channel = edge' >> /home/pmos/pmaports_clean/pmaports.cfg &&
 
-              # EL CORTE DEFINITIVO: Las 4 respuestas en UN SOLO printf
+              # CAMBIO CRUCIAL: HACER EL INIT JUSTO DESPUÉS DE CONFIGURAR
               sudo -u pmos bash -c \"
-                mkdir -p /tmp/pmos_work
-                
-                # Inyectamos las 4 respuestas en una sola tubería
-                printf '/tmp/pmos_work\nedge\nsamsung\ngts7fewifi\n' | /pmbootstrap/venv/bin/pmbootstrap init
+                # Inyectamos las respuestas AHORA MISMO, antes de que pmbootstrap pregunte
+                printf '/tmp/pmos_work\nedge\nsamsung\ngts7fewifi\n' | /pmbootstrap/venv/bin/pmbootstrap --aports /home/pmos/pmaports_clean init
 
-                /pmbootstrap/venv/bin/pmbootstrap install --no-fde
-                /pmbootstrap/venv/bin/pmbootstrap export
+                # AHORA ejecutamos el install
+                /pmbootstrap/venv/bin/pmbootstrap --aports /home/pmos/pmaports_clean install --no-fde
+                /pmbootstrap/venv/bin/pmbootstrap --aports /home/pmos/pmaports_clean export
               \"
 
               cp -rv /tmp/pmos_work/cache_http/images/* /tmp/out/ || true;

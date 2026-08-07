@@ -14,13 +14,13 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y python3-venv git openssl curl device-tree-compiler bmap-tools
           
-      - name: Setup Python venv and install pmbootstrap 3.4.0
+      - name: Setup Python venv and install pmbootstrap 3.9.0
         run: |
           python3 -m venv venv
           source venv/bin/activate
           
-          # Instalamos la versión 3.4.0 (que tiene todos los flags y no está rota)
-          pip install "git+https://gitlab.postmarketos.org/postmarketOS/pmbootstrap.git@3.4.0"
+          # Instalamos la versión exacta que pide pmaports (3.9.0)
+          pip install "git+https://gitlab.postmarketos.org/postmarketOS/pmbootstrap.git@3.9.0"
           echo "$PWD/venv/bin" >> $GITHUB_PATH
           
       - name: Configure and build (Skipping broken 'init' entirely)
@@ -30,13 +30,13 @@ jobs:
           mkdir -p /tmp/out
           mkdir -p /tmp/git_pmaports
           
-          # 1. Clonar el repositorio oficial de pmaports (para evitar el error de Git)
+          # 1. Clonar el repositorio oficial de pmaports
           git clone --depth 1 https://gitlab.postmarketos.org/postmarketOS/pmaports.git /tmp/git_pmaports
           
           # 2. Crear el enlace simbólico necesario
           ln -s /tmp/git_pmaports ${{ github.workspace }}/pmaports
           
-          # 3. Crear el archivo de configuración (Apuntando al enlace)
+          # 3. Crear el archivo de configuración
           cat > ~/.config/pmbootstrap/pmbootstrap.cfg <<EOF
           [pmbootstrap]
           aports = ${{ github.workspace }}/pmaports
@@ -48,17 +48,17 @@ jobs:
           jobs = 2
           EOF
           
-          # 4. Crear pmaports.cfg en la raíz de los aports
+          # 4. Crear pmaports.cfg (ya no dará error de versión porque tenemos la 3.9.0)
           cat > ${{ github.workspace }}/pmaports.cfg <<EOF
           [pmaports]
           version = 7
-          pmbootstrap_min_version = 1.29.0
+          pmbootstrap_min_version = 3.9.0
           channel = edge
           supported_root_filesystems = ext4,f2fs,btrfs
           EOF
           
-          # 5. EL TRUCO FINAL: Usamos --config y nos saltamos el 'init' por completo.
-          # La versión 3.4.0 tiene el flag --details-to-stdout
+          # 5. EL TRUCO FINAL: Usamos --config y nos saltamos el 'init'.
+          # La versión 3.9.0 tiene el flag --details-to-stdout
           pmbootstrap --config ~/.config/pmbootstrap/pmbootstrap.cfg --details-to-stdout install --no-fde
           
           # 6. Exportar los artefactos

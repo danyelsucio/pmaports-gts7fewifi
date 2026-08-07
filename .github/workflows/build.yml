@@ -14,21 +14,20 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y python3-pip git openssl device-tree-compiler bmap-tools
           
-      - name: Install pmbootstrap v2.2.1 (Última estable 2.x)
+      - name: Install pmbootstrap (Branch 2.x - Stable for CI)
         run: |
-          # Clonamos el repo y nos cambiamos a la última versión estable 2.x que funciona en CI
-          git clone https://gitlab.postmarketos.org/postmarketOS/pmbootstrap.git
-          cd pmbootstrap
-          git checkout v2.2.1
-          pip3 install --user .
+          # Clonamos y nos vamos directamente a la rama 2.x (que no tiene los bugs de Git)
+          git clone -b 2.x https://gitlab.postmarketos.org/postmarketOS/pmbootstrap.git
+          pip3 install --user ./pmbootstrap
           echo "$HOME/.local/bin" >> $GITHUB_PATH
           
-      - name: Create config and pmaports.cfg
+      - name: Configure pmbootstrap and build rootfs
         run: |
+          # 1. Crear directorios de configuración
           mkdir -p ~/.config/pmbootstrap
           mkdir -p /tmp/pmbootstrap_work
           
-          # Configuración para v2.2.1
+          # 2. Crear el archivo de configuración principal
           cat > ~/.config/pmbootstrap/pmbootstrap.cfg <<EOF
           [pmbootstrap]
           aports = ${{ github.workspace }}
@@ -38,7 +37,7 @@ jobs:
           ui = console
           EOF
           
-          # Archivo obligatorio en la raíz
+          # 3. Crear el archivo pmaports.cfg obligatorio en la raíz
           cat > ${{ github.workspace }}/pmaports.cfg <<EOF
           [pmaports]
           version = 7
@@ -47,16 +46,15 @@ jobs:
           supported_root_filesystems = ext4,f2fs,btrfs
           EOF
           
-          # Para que no pregunte nada al hacer init
+          # 4. Simular que el init ya se ejecutó para evitar preguntas
           touch ~/.config/pmbootstrap/pmbootstrap_init_done
           
-      - name: Build rootfs for gts7fewifi
-        run: |
-          # Con v2.2.1 y el archivo init_done creado, esto pasará volando
+          # 5. Ejecutar la compilación
           pmbootstrap init
           pmbootstrap install --no-fde
           pmbootstrap export
           
+          # 6. Copiar los artefactos
           mkdir -p /tmp/out
           cp -rv /tmp/postmarketOS-export/* /tmp/out/ || true
           

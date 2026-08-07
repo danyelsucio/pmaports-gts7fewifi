@@ -61,16 +61,14 @@ jobs:
                 echo 'extra_space = 1500' >> /build/.config/pmbootstrap/pmbootstrap.cfg;
 
                 echo '--- PASO 4: ARREGLAR EL GIT ---';
-                # Configurar el remote y la rama main para evitar errores
+                # Cambiamos la URL del remote y hacemos fetch
                 cd /home/pmos/pmaports &&
                 git remote set-url origin https://gitlab.postmarketos.org/postmarketOS/pmaports.git &&
                 git fetch origin master --depth 1 &&
-                # Si la rama main ya existe, la eliminamos y la recreamos
-                git branch -D main || true &&
-                git checkout -b main origin/master;
+                # EL TRUCO DEFINITIVO: Forzamos la creación de la rama main local
+                git branch -f main origin/master;
 
                 echo '--- PASO 5: COMPILAR (INSTALL) ---';
-                # Usamos el flag --config para saltarnos el init por completo
                 /build/venv/bin/pmbootstrap --config /build/.config/pmbootstrap/pmbootstrap.cfg install --no-fde;
 
                 echo '--- PASO 6: EXPORTAR LA IMAGEN ---';

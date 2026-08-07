@@ -1,4 +1,4 @@
-name: Manual Build Process (The Ultimate KO)
+name: Manual Build Process (The Absolute End)
 on:
   push:
     branches: ["main", "master"]
@@ -30,20 +30,20 @@ jobs:
           mkdir -p /tmp/pmbootstrap_work
           mkdir -p /tmp/out
           
+          # NOMBRE DE CARPETA ALEATORIO (NUNCA SE REPITE)
+          WORK_DIR="/home/pmos/work_dir_$(date +%s)"
+          
           docker run --rm -t \
             --entrypoint bash \
             --user root \
             -v ${{ github.workspace }}:/home/pmos/mi_repo \
-            -v /tmp/pmbootstrap_work:/home/pmos/work_dir_fresh \
+            -v /tmp/pmbootstrap_work:${WORK_DIR} \
             -v /tmp/out:/tmp/out \
             --device /dev/fuse \
             --cap-add SYS_ADMIN \
             --security-opt apparmor:unconfined \
             pmos-toolbox \
             -c "
-              # 0. LA CLAVE: BORRAR CUALQUIER RESTO DE CACHÉ ANTES DE CREAR EL USUARIO
-              rm -rf /home/pmos/work_dir_fresh &&
-
               # 1. CREAR CARPETA HOME DEL USUARIO COMO ROOT
               mkdir -p /home/pmos &&
               chown 1000:1000 /home/pmos &&
@@ -55,7 +55,7 @@ jobs:
               echo 'pmos ALL=(ALL) NOPASSWD:ALL' >> /etc/sudoers &&
               chown -R pmos:pmos /tmp/out &&
               chown -R pmos:pmos /build &&
-              chown -R pmos:pmos /home/pmos/work_dir_fresh &&
+              chown -R pmos:pmos ${WORK_DIR} &&
 
               # 3. CLONAR EL REPO OFICIAL
               git clone https://gitlab.postmarketos.org/postmarketOS/pmaports.git /home/pmos/pmaports_clean &&
@@ -73,7 +73,7 @@ jobs:
                 mkdir -p /build/.config/pmbootstrap;
                 echo '[pmbootstrap]' > /build/.config/pmbootstrap/pmbootstrap.cfg;
                 echo 'aports = /home/pmos/pmaports_clean' >> /build/.config/pmbootstrap/pmbootstrap.cfg;
-                echo 'work = /home/pmos/work_dir_fresh' >> /build/.config/pmbootstrap/pmbootstrap.cfg;
+                echo 'work = ${WORK_DIR}' >> /build/.config/pmbootstrap/pmbootstrap.cfg;
                 echo 'device = gts7fewifi' >> /build/.config/pmbootstrap/pmbootstrap.cfg;
                 echo 'channel = edge' >> /build/.config/pmbootstrap/pmbootstrap.cfg;
                 echo 'ui = console' >> /build/.config/pmbootstrap/pmbootstrap.cfg;
@@ -87,7 +87,7 @@ jobs:
               \"
 
               # 8. COPIAR ARTEFACTOS
-              cp -rv /home/pmos/work_dir_fresh/cache_http/images/* /tmp/out/ || true;
+              cp -rv ${WORK_DIR}/cache_http/images/* /tmp/out/ || true;
               cp -rv /tmp/postmarketOS-export/* /tmp/out/ || true;
             "
 

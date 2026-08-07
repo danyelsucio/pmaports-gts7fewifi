@@ -14,18 +14,15 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y python3-venv git openssl device-tree-compiler bmap-tools
           
-      - name: Setup Python venv and install pmbootstrap
+      - name: Setup Python venv and install pmbootstrap (HEAD of main)
         run: |
-          # Crear un entorno virtual de Python (evita el error "externally-managed")
           python3 -m venv venv
-          
-          # Activar el entorno virtual
           source venv/bin/activate
           
-          # Instalar pmbootstrap v3.4.0 dentro del entorno virtual (sin errores)
-          pip install "git+https://gitlab.postmarketos.org/postmarketOS/pmbootstrap.git@3.4.0"
+          # INSTALAMOS LA RAMA MAIN (NO EL TAG 3.4.0). 
+          # Esto es lo que los desarrolladores de pmbootstrap usan, y tiene TODOS los flags.
+          pip install "git+https://gitlab.postmarketos.org/postmarketOS/pmbootstrap.git@main"
           
-          # Guardar la ruta del entorno para los siguientes pasos
           echo "$PWD/venv/bin" >> $GITHUB_PATH
           
       - name: Configure environment and build
@@ -60,12 +57,13 @@ jobs:
           git remote set-url origin https://gitlab.postmarketos.org/postmarketOS/pmaports.git
           git fetch origin master --depth 1
           
-          # 4. EL TRUCO FINAL: Usamos --config para saltar el init interactivo por completo.
-          # Esto evita el EOFError para siempre.
-          pmbootstrap --config ~/.config/pmbootstrap/pmbootstrap.cfg install --no-fde --details-to-stdout
+          # 4. LA COMBINACIÓN GANADORA:
+          # Usamos init --yes para pre-configurar (EN LA RAMA MAIN ESTO SÍ FUNCIONA)
+          pmbootstrap --aports ${{ github.workspace }} init --yes
           
-          # 5. Exportar los archivos generados
-          pmbootstrap --config ~/.config/pmbootstrap/pmbootstrap.cfg export
+          # 5. AHORA el flag --details-to-stdout SÍ EXISTE Y FUNCIONA
+          pmbootstrap --aports ${{ github.workspace }} install --no-fde --details-to-stdout
+          pmbootstrap --aports ${{ github.workspace }} export
           
           # 6. Mover los artefactos a la carpeta de salida
           cp -rv /tmp/postmarketOS-export/* /tmp/out/ || true

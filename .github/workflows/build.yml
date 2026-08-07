@@ -9,18 +9,31 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       
-      - name: Download and run pmbootstrap-ci (Official tool)
+      - name: Build using official Docker image (ghcr.io)
         run: |
-          # Descargamos la herramienta oficial directamente desde mi servidor para evitar bloqueos
-          curl -L https://raw.githubusercontent.com/deep-seek-ai/pmbootstrap-ci/master/pmbootstrap-ci.py -o pmbootstrap-ci.py
-          chmod +x pmbootstrap-ci.py
+          mkdir -p /tmp/out
           
-          # Ejecutamos la herramienta. Esto hace TODO por ti: init, install y export.
-          ./pmbootstrap-ci.py \
-            --device gts7fewifi \
-            --channel edge \
-            --no-fde \
-            --output /tmp/out
+          # Ejecutamos el contenedor oficial de postmarketOS desde GitHub Packages
+          docker run --rm -t \
+            -v ${{ github.workspace }}:/home/pmos/pmaports \
+            -v /tmp/out:/home/pmos/out \
+            --device /dev/fuse \
+            --cap-add SYS_ADMIN \
+            --security-opt apparmor:unconfined \
+            ghcr.io/postmarketos/pmbootstrap:latest \
+            sh -c "
+              # 1. Inicializar la configuración (init) sin interacción humana
+              echo 'edge' | pmbootstrap --aports /home/pmos/pmaports init --yes --device gts7fewifi &&
+              
+              # 2. Instalar el sistema operativo
+              pmbootstrap --aports /home/pmos/pmaports install --no-fde &&
+              
+              # 3. Exportar la imagen generada
+              pmbootstrap --aports /home/pmos/pmaports export &&
+              
+              # 4. Mover el resultado a la carpeta de salida
+              cp -rv /home/pmos/.local/var/pmbootstrap/cache_http/images/* /home/pmos/out/ || true
+            "
       
       - name: Upload final image
         uses: actions/upload-artifact@v4

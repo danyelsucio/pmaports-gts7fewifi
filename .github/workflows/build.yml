@@ -53,10 +53,10 @@ jobs:
           
       - name: Build rootfs for gts7fewifi
         run: |
-          # Usamos --aports en init y --details-to-stdout en el install para evitar timeouts de GitHub
-          pmbootstrap --aports ${{ github.workspace }} init
+          # CAMBIO CLAVE: Añadimos '--yes' para que acepte el archivo .cfg sin preguntar.
+          pmbootstrap --aports ${{ github.workspace }} init --yes
           
-          # Añadimos --details-to-stdout para que el log no se detenga y no falle por timeout
+          # Ahora el install usará el dispositivo correcto (gts7fewifi)
           pmbootstrap --aports ${{ github.workspace }} install --no-fde --details-to-stdout
           pmbootstrap export
           

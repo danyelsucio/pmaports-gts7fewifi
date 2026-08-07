@@ -29,10 +29,10 @@ jobs:
           # Clonamos el repo oficial en la ruta que pmbootstrap espera
           git clone --depth 1 https://gitlab.postmarketos.org/postmarketOS/pmaports.git /home/runner/.local/var/pmbootstrap/cache_git/pmaports
           
-          # EL TRUCO FINAL: Crear una rama 'master' a partir de 'main'.
-          # Esto evita el error "invalid object name 'origin/master'".
+          # EL TRUCO DEFINITIVO: Configuramos el remote 'origin' para que apunte a master
           cd /home/runner/.local/var/pmbootstrap/cache_git/pmaports
-          git branch master main
+          git remote add origin https://gitlab.postmarketos.org/postmarketOS/pmaports.git
+          git fetch origin master --depth 1
           
           # Enlazar tu repositorio al oficial
           mkdir -p ${{ github.workspace }}/pmaports
@@ -50,9 +50,9 @@ jobs:
           mkdir -p /tmp/pmbootstrap_work
           mkdir -p /tmp/out
           
-      - name: Build (The Last Piece)
+      - name: Build (The Absolute Last Piece)
         run: |
-          # Ahora pmbootstrap encontrará 'origin/master' y no fallará.
+          # Ahora pmbootstrap encontrará 'origin/master' en el remote y no fallará.
           pmbootstrap \
             -c aports=${{ github.workspace }}/pmaports \
             -c work=/tmp/pmbootstrap_work \

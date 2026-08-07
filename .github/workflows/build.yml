@@ -1,4 +1,4 @@
-name: Manual Build Process (No Init, Just Config)
+name: Manual Build Process (Create Work Dir First)
 on:
   push:
     branches: ["main", "master"]
@@ -57,7 +57,11 @@ jobs:
               echo 'pmbootstrap_min_version = 1.29.0' >> /home/pmos/pmaports_clean/pmaports.cfg &&
               echo 'channel = edge' >> /home/pmos/pmaports_clean/pmaports.cfg &&
 
-              # 4. LA CLAVE: CREAR EL ARCHIVO DE CONFIGURACIÓN DE PMBOOTSTRAP CON TODO
+              # 4. CREAR LA CARPETA DE TRABAJO (LA CLAVE)
+              mkdir -p /tmp/pmos_work &&
+              chown -R pmos:pmos /tmp/pmos_work &&
+
+              # 5. CONFIGURACIÓN DE PMBOOTSTRAP
               sudo -u pmos bash -c \"
                 mkdir -p /build/.config/pmbootstrap &&
                 echo '[pmbootstrap]' > /build/.config/pmbootstrap/pmbootstrap.cfg &&
@@ -68,12 +72,12 @@ jobs:
                 echo 'ui = console' >> /build/.config/pmbootstrap/pmbootstrap.cfg &&
                 echo 'extra_space = 1500' >> /build/.config/pmbootstrap/pmbootstrap.cfg &&
 
-                # 5. SIN INIT: PASAMOS EL ARCHIVO DE CONFIGURACIÓN DIRECTAMENTE AL INSTALL
+                # 6. INSTALACIÓN
                 /pmbootstrap/venv/bin/pmbootstrap --config /build/.config/pmbootstrap/pmbootstrap.cfg install --no-fde &&
                 /pmbootstrap/venv/bin/pmbootstrap --config /build/.config/pmbootstrap/pmbootstrap.cfg export
               \"
 
-              # 6. COPIAR ARTEFACTOS
+              # 7. COPIAR ARTEFACTOS
               cp -rv /tmp/pmos_work/cache_http/images/* /tmp/out/ || true;
               cp -rv /tmp/postmarketOS-export/* /tmp/out/ || true;
             "

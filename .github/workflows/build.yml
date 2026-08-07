@@ -1,4 +1,4 @@
-name: Manual Build Process
+name: Manual Build Process with tomli fix
 on:
   push:
     branches: ["main", "master"]
@@ -37,7 +37,8 @@ jobs:
               echo '--- PASO 2: DESCARGAR E INSTALAR PMBOOTSTRAP ---'
               git clone https://gitlab.postmarketos.org/postmarketOS/pmbootstrap.git /pmbootstrap_src &&
               python3 -m venv /venv &&
-              /venv/bin/pip install /pmbootstrap_src &&
+              # AÑADIMOS 'tomli' AL ENTORNO VIRTUAL
+              /venv/bin/pip install /pmbootstrap_src tomli &&
 
               echo '--- PASO 3: PREPARAR LA CONFIGURACIÓN DEL DISPOSITIVO ---'
               mkdir -p /home/pmos/.config/pmbootstrap &&

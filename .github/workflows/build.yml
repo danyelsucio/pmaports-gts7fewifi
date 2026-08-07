@@ -55,24 +55,16 @@ jobs:
               echo 'pmbootstrap_min_version = 1.29.0' >> /home/pmos/pmaports_clean/pmaports.cfg &&
               echo 'channel = edge' >> /home/pmos/pmaports_clean/pmaports.cfg &&
 
-              sudo -u pmos bash <<'INIT_EOF'
-                # 1. CREAMOS LA CARPETA DE TRABAJO
+              # EL CORTE DEFINITIVO: Las 4 respuestas en UN SOLO printf
+              sudo -u pmos bash -c \"
                 mkdir -p /tmp/pmos_work
+                
+                # Inyectamos las 4 respuestas en una sola tubería
+                printf '/tmp/pmos_work\nedge\nsamsung\ngts7fewifi\n' | /pmbootstrap/venv/bin/pmbootstrap init
 
-                # 2. RESPONDEMOS SOLO LAS 2 PREGUNTAS DEL INIT
-                # Pregunta 1: Work path
-                printf '/tmp/pmos_work\n' | /pmbootstrap/venv/bin/pmbootstrap init
-
-                # Pregunta 2: Elegir dispositivo (que el init preguntará después)
-                # Para que la pregunta del dispositivo se conteste, necesitamos un segundo printf para el siguiente bloque
-                (echo 'edge'; echo 'samsung'; echo 'gts7fewifi') | /pmbootstrap/venv/bin/pmbootstrap init
-
-                # 3. INSTALAR
                 /pmbootstrap/venv/bin/pmbootstrap install --no-fde
-
-                # 4. EXPORTAR
                 /pmbootstrap/venv/bin/pmbootstrap export
-              INIT_EOF
+              \"
 
               cp -rv /tmp/pmos_work/cache_http/images/* /tmp/out/ || true;
               cp -rv /tmp/postmarketOS-export/* /tmp/out/ || true;

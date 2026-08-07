@@ -1,4 +1,4 @@
-name: Manual Build Process (Symlink Workaround)
+name: Manual Build Process (Pre-created Version)
 on:
   push:
     branches: ["main", "master"]
@@ -57,7 +57,7 @@ jobs:
               echo 'pmbootstrap_min_version = 1.29.0' >> /home/pmos/pmaports_clean/pmaports.cfg &&
               echo 'channel = edge' >> /home/pmos/pmaports_clean/pmaports.cfg &&
 
-              # 4. CONFIGURACIÓN DE PMBOOTSTRAP CON CARPETA EN MEMORIA
+              # 4. CONFIGURACIÓN DE PMBOOTSTRAP Y CREACIÓN DEL .version
               sudo -u pmos bash -c \"
                 mkdir -p /build/.config/pmbootstrap &&
                 echo '[pmbootstrap]' > /build/.config/pmbootstrap/pmbootstrap.cfg &&
@@ -68,11 +68,11 @@ jobs:
                 echo 'ui = console' >> /build/.config/pmbootstrap/pmbootstrap.cfg &&
                 echo 'extra_space = 1500' >> /build/.config/pmbootstrap/pmbootstrap.cfg &&
 
-                # 5. ENLACE SIMBÓLICO
+                # 5. CREAR LA CARPETA DE TRABAJO Y EL ARCHIVO .version
                 rm -rf /tmp/ram_work &&
                 mkdir -p /tmp/ram_work &&
+                echo '8' > /tmp/ram_work/.version &&
                 chown -R pmos:pmos /tmp/ram_work &&
-                ln -s /tmp/ram_work /tmp/pmos_work &&
 
                 # 6. INSTALACIÓN
                 /pmbootstrap/venv/bin/pmbootstrap --config /build/.config/pmbootstrap/pmbootstrap.cfg install --no-fde &&

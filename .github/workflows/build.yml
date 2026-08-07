@@ -1,4 +1,4 @@
-name: Manual Build Process (Force Aports in Install)
+name: Manual Build Process (3.10.0 - The Final)
 on:
   push:
     branches: ["main", "master"]
@@ -9,14 +9,14 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Build custom pmbootstrap Docker image (with tomli and kpartx)
+      - name: Build custom pmbootstrap 3.10.0 Docker image
         run: |
           docker system prune -af || true
           
           cat > Dockerfile <<EOF
           FROM ubuntu:22.04
           RUN apt-get update && apt-get install -y python3 python3-pip python3-venv git openssl device-tree-compiler bmap-tools sudo curl kpartx
-          RUN git clone https://gitlab.postmarketos.org/postmarketOS/pmbootstrap.git /pmbootstrap
+          RUN git clone https://gitlab.postmarketos.org/postmarketOS/pmbootstrap.git /pmbootstrap && cd /pmbootstrap && git checkout 3.10.0
           RUN python3 -m venv /pmbootstrap/venv
           RUN /pmbootstrap/venv/bin/pip install /pmbootstrap tomli
           WORKDIR /work
@@ -57,10 +57,9 @@ jobs:
               echo 'pmbootstrap_min_version = 1.29.0' >> /home/pmos/pmaports_clean/pmaports.cfg &&
               echo 'channel = edge' >> /home/pmos/pmaports_clean/pmaports.cfg &&
 
-              # 4. EL TRUCO DEFINITIVO: yes | pmbootstrap init
+              # 4. EL TRUCO DEFINITIVO: yes | pmbootstrap init (3.10.0)
               sudo -u pmos bash -c \"
-                yes | /pmbootstrap/venv/bin/pmbootstrap init &&
-                # FORZAMOS EL --aports EN EL INSTALL
+                yes | /pmbootstrap/venv/bin/pmbootstrap --aports /home/pmos/pmaports_clean init &&
                 /pmbootstrap/venv/bin/pmbootstrap --aports /home/pmos/pmaports_clean install --no-fde &&
                 /pmbootstrap/venv/bin/pmbootstrap --aports /home/pmos/pmaports_clean export
               \"

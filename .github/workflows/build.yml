@@ -60,18 +60,12 @@ jobs:
                 echo 'ui = console' >> /build/.config/pmbootstrap/pmbootstrap.cfg;
                 echo 'extra_space = 1500' >> /build/.config/pmbootstrap/pmbootstrap.cfg;
 
-                echo '--- PASO 4: EL TRUCO DEFINITIVO (Descarga manual de channels.cfg) ---';
-                cd /home/pmos/pmaports;
-                git remote set-url origin https://gitlab.postmarketos.org/postmarketOS/pmaports.git;
-                git fetch origin master --depth 1;
-                # Descargamos el archivo directamente y lo ponemos en la raíz
+                echo '--- PASO 4: DESCARGAR EL CHANNELS.CFG (POR SI ACASO) ---';
                 curl -L https://gitlab.postmarketos.org/postmarketOS/pmaports/-/raw/master/channels.cfg -o /home/pmos/pmaports/channels.cfg;
-                # Creamos una referencia vacía para engañar a pmbootstrap
-                mkdir -p .git/refs/remotes/origin;
-                echo '0000000000000000000000000000000000000000' > .git/refs/remotes/origin/main;
 
-                echo '--- PASO 5: COMPILAR (INSTALL) ---';
-                /build/venv/bin/pmbootstrap --config /build/.config/pmbootstrap/pmbootstrap.cfg install --no-fde;
+                echo '--- PASO 5: EL TRUCO FINAL (Forzar el canal en el comando) ---';
+                # Pasamos el canal directamente en el comando, ignorando la validación del archivo
+                /build/venv/bin/pmbootstrap --config /build/.config/pmbootstrap/pmbootstrap.cfg install --no-fde --channel edge;
 
                 echo '--- PASO 6: EXPORTAR LA IMAGEN ---';
                 /build/venv/bin/pmbootstrap --config /build/.config/pmbootstrap/pmbootstrap.cfg export;

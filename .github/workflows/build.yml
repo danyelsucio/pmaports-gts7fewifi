@@ -12,53 +12,57 @@ jobs:
       - name: Install system dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y docker.io git bmap-tools
+          sudo apt-get install -y python3-pip git openssl device-tree-compiler bmap-tools
           
-      - name: Build custom pmbootstrap Docker image
+      - name: Install pmbootstrap v3.4.0 with uv
         run: |
-          # Creamos un Dockerfile simple que instala pmbootstrap desde Git
-          cat > Dockerfile <<EOF
-          FROM alpine:latest
-          RUN apk add --no-cache python3 py3-pip git openssl device-tree-compiler
-          RUN git clone https://gitlab.postmarketos.org/postmarketOS/pmbootstrap.git /pmbootstrap
-          RUN pip3 install --upgrade pip && pip3 install /pmbootstrap
-          WORKDIR /work
-          ENTRYPOINT ["pmbootstrap"]
+          # Instalamos 'uv' (un instalador de Python rapidísimo)
+          pip3 install uv
+          
+          # Instalamos pmbootstrap 3.4.0 desde su tag de GitHub (evita problemas de PyPI)
+          uv pip install --system "git+https://gitlab.postmarketos.org/postmarketOS/pmbootstrap.git@3.4.0"
+          
+      - name: Configure environment and build
+        run: |
+          mkdir -p ~/.config/pmbootstrap
+          mkdir -p /tmp/pmbootstrap_work
+          mkdir -p /tmp/out
+          
+          # 1. Crear el archivo de configuración completo
+          cat > ~/.config/pmbootstrap/pmbootstrap.cfg <<EOF
+          [pmbootstrap]
+          aports = ${{ github.workspace }}
+          work = /tmp/pmbootstrap_work
+          device = gts7fewifi
+          channel = edge
+          ui = console
+          extra_space = 1500
+          jobs = 2
           EOF
           
-          # Construimos la imagen localmente (NO depende de registros externos)
-          docker build -t pmbootstrap-local .
+          # 2. Crear pmaports.cfg
+          cat > ${{ github.workspace }}/pmaports.cfg <<EOF
+          [pmaports]
+          version = 7
+          pmbootstrap_min_version = 1.29.0
+          channel = edge
+          supported_root_filesystems = ext4,f2fs,btrfs
+          EOF
           
-      - name: Build rootfs using local Docker image
-        run: |
-          chmod -R 755 ${{ github.workspace }}
+          # 3. Arreglar Git para que pmbootstrap no se queje de "no remote"
+          cd ${{ github.workspace }}
+          git remote set-url origin https://gitlab.postmarketos.org/postmarketOS/pmaports.git
+          git fetch origin master --depth 1
           
-          # Ejecutamos el contenedor con la imagen que acabamos de construir.
-          # Pasamos el flag `--yes` al install, y el flag `--details-to-stdout` para logs.
-          docker run --rm -t \
-            -v ${{ github.workspace }}:/home/pmos/pmaports \
-            -v /tmp/pmbootstrap_work:/home/pmos/.local/var/pmbootstrap \
-            --device /dev/fuse \
-            --cap-add SYS_ADMIN \
-            --security-opt apparmor:unconfined \
-            pmbootstrap-local \
-            sh -c "
-              echo '[pmaports]' > /home/pmos/pmaports/pmaports.cfg &&
-              echo 'version = 7' >> /home/pmos/pmaports/pmaports.cfg &&
-              echo 'pmbootstrap_min_version = 1.29.0' >> /home/pmos/pmaports/pmaports.cfg &&
-              echo 'channel = edge' >> /home/pmos/pmaports/pmaports.cfg &&
-              
-              # ESTO ES LA CLAVE: Inyectamos la respuesta del work path con 'echo' para evitar el EOF.
-              printf '/tmp/pmbootstrap_work\n' | pmbootstrap --aports /home/pmos/pmaports init &&
-              
-              # --yes funciona en el install y evita preguntas.
-              pmbootstrap --aports /home/pmos/pmaports install --no-fde --yes --details-to-stdout &&
-              pmbootstrap --aports /home/pmos/pmaports export
-            "
+          # 4. EL TRUCO FINAL: Usamos --config para saltar el init interactivo por completo.
+          # Esto evita el EOFError para siempre.
+          pmbootstrap --config ~/.config/pmbootstrap/pmbootstrap.cfg install --no-fde --details-to-stdout
           
-          mkdir -p /tmp/out
-          sudo cp -rv /tmp/pmbootstrap_work/cache_http/images/* /tmp/out/ || true
-          sudo chmod -R 755 /tmp/out
+          # 5. Exportar los archivos generados
+          pmbootstrap --config ~/.config/pmbootstrap/pmbootstrap.cfg export
+          
+          # 6. Mover los artefactos a la carpeta de salida
+          cp -rv /tmp/postmarketOS-export/* /tmp/out/ || true
           
       - name: Upload artifact
         uses: actions/upload-artifact@v4

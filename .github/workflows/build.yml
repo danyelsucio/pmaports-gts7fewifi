@@ -1,4 +1,4 @@
-name: Manual Build Process (Ultimate Git Fix)
+name: Manual Build Process (CI Mode Fix)
 on:
   push:
     branches: ["main", "master"]
@@ -26,6 +26,9 @@ jobs:
           docker build -t pmos-toolbox --no-cache .
 
       - name: Execute the Ultimate Build Step
+        env:
+          # VARIABLE DE ENTORNO MÁGICA: Apaga la validación de Git en 3.11.1
+          PMBOOTSTRAP_SKIP_GIT_REQUIREMENT: "1"
         run: |
           mkdir -p /tmp/pmbootstrap_work
           mkdir -p /tmp/out
@@ -49,14 +52,7 @@ jobs:
               chown -R pmos:pmos /tmp/out &&
               chown -R pmos:pmos /build &&
 
-              # 2. EL TRUCO DEFINITIVO: 
-              # Movemos la carpeta montada a otro lado, clonamos el repo oficial en su lugar,
-              # y copiamos TU dispositivo (gts7fewifi) dentro del repo oficial.
-              mv /home/pmos/pmaports /home/pmos/mi_repo &&
-              git clone https://gitlab.postmarketos.org/postmarketOS/pmaports.git /home/pmos/pmaports &&
-              cp -rf /home/pmos/mi_repo/* /home/pmos/pmaports/ &&
-
-              # 3. PREPARAR EL ARCHIVO DE CONFIGURACIÓN
+              # 2. PREPARAR EL ARCHIVO DE CONFIGURACIÓN
               sudo -u pmos bash -c \"
                 mkdir -p /build/.config/pmbootstrap;
                 echo '[pmbootstrap]' > /build/.config/pmbootstrap/pmbootstrap.cfg;
@@ -67,14 +63,14 @@ jobs:
                 echo 'ui = console' >> /build/.config/pmbootstrap/pmbootstrap.cfg;
                 echo 'extra_space = 1500' >> /build/.config/pmbootstrap/pmbootstrap.cfg;
 
-                # 4. EJECUTAMOS EL INSTALL
+                # 3. EJECUTAMOS EL INSTALL (PMBOOTSTRAP_SKIP_GIT_REQUIREMENT lo hará callar)
                 /pmbootstrap/venv/bin/pmbootstrap --config /build/.config/pmbootstrap/pmbootstrap.cfg install --no-fde;
 
-                # 5. EXPORTAR LA IMAGEN
+                # 4. EXPORTAR LA IMAGEN
                 /pmbootstrap/venv/bin/pmbootstrap --config /build/.config/pmbootstrap/pmbootstrap.cfg export;
               \"
 
-              # 6. COPIAR LOS ARTEFACTOS
+              # 5. COPIAR LOS ARTEFACTOS
               cp -rv /home/pmos/.local/var/pmbootstrap/cache_http/images/* /tmp/out/ || true;
               cp -rv /tmp/postmarketOS-export/* /tmp/out/ || true;
             "

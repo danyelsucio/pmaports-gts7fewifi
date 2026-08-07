@@ -24,19 +24,21 @@ jobs:
           
       - name: Prepare directories and symlinks
         run: |
-          # 1. Crear la ruta exacta donde pmbootstrap busca pmaports
           mkdir -p /home/runner/.local/var/pmbootstrap/cache_git
           
-          # 2. Clonar el repositorio OFICIAL de pmaports en esa ruta
-          # Esto evita el error "could not find remote name" para siempre.
+          # Clonamos el repo oficial en la ruta que pmbootstrap espera
           git clone --depth 1 https://gitlab.postmarketos.org/postmarketOS/pmaports.git /home/runner/.local/var/pmbootstrap/cache_git/pmaports
           
-          # 3. Crear un symlink desde TU repositorio hacia el oficial.
-          # Esto permite que pmbootstrap vea tu dispositivo (gts7fewifi) dentro del repositorio oficial.
+          # EL TRUCO FINAL: Crear una rama 'master' a partir de 'main'.
+          # Esto evita el error "invalid object name 'origin/master'".
+          cd /home/runner/.local/var/pmbootstrap/cache_git/pmaports
+          git branch master main
+          
+          # Enlazar tu repositorio al oficial
           mkdir -p ${{ github.workspace }}/pmaports
           ln -s /home/runner/.local/var/pmbootstrap/cache_git/pmaports/* ${{ github.workspace }}/pmaports/
           
-          # 4. Crear pmaports.cfg en la raíz
+          # Crear pmaports.cfg
           cat > ${{ github.workspace }}/pmaports.cfg <<EOF
           [pmaports]
           version = 7
@@ -48,10 +50,9 @@ jobs:
           mkdir -p /tmp/pmbootstrap_work
           mkdir -p /tmp/out
           
-      - name: Build (Remote Git validation completely bypassed)
+      - name: Build (The Last Piece)
         run: |
-          # Usamos -c para evitar el init por completo.
-          # Como la carpeta pmaports está en el lugar correcto y tiene el remote oficial, ¡no fallará!
+          # Ahora pmbootstrap encontrará 'origin/master' y no fallará.
           pmbootstrap \
             -c aports=${{ github.workspace }}/pmaports \
             -c work=/tmp/pmbootstrap_work \

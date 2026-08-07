@@ -9,19 +9,34 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       
-      - name: Install pmbootstrap-ci
+      - name: Build custom pmbootstrap Docker image
         run: |
-          # Esta es la herramienta oficial para CI. No instala pmbootstrap, usa contenedores ya probados.
-          curl -L https://gitlab.postmarketos.org/postmarketOS/pmbootstrap-ci/-/raw/master/pmbootstrap-ci.py -o pmbootstrap-ci.py
-          chmod +x pmbootstrap-ci.py
+          docker build -t pmbootstrap-local .
           
-      - name: Build rootfs for gts7fewifi
+      - name: Run build using local image
         run: |
-          ./pmbootstrap-ci.py \
-            --device gts7fewifi \
-            --channel edge \
-            --no-fde \
-            --output /tmp/out
+          mkdir -p /tmp/pmbootstrap_work
+          mkdir -p /tmp/out
+          
+          docker run --rm -t \
+            -v ${{ github.workspace }}:/home/pmos/pmaports \
+            -v /tmp/pmbootstrap_work:/home/pmos/.local/var/pmbootstrap \
+            --device /dev/fuse \
+            --cap-add SYS_ADMIN \
+            --security-opt apparmor:unconfined \
+            pmbootstrap-local \
+            sh -c "
+              echo '[pmaports]' > /home/pmos/pmaports/pmaports.cfg &&
+              echo 'version = 7' >> /home/pmos/pmaports/pmaports.cfg &&
+              echo 'pmbootstrap_min_version = 1.29.0' >> /home/pmos/pmaports/pmaports.cfg &&
+              echo 'channel = edge' >> /home/pmos/pmaports/pmaports.cfg &&
+              
+              pmbootstrap --aports /home/pmos/pmaports --work /home/pmos/.local/var/pmbootstrap init --yes --device gts7fewifi --channel edge &&
+              pmbootstrap --aports /home/pmos/pmaports --work /home/pmos/.local/var/pmbootstrap install --no-fde &&
+              pmbootstrap --aports /home/pmos/pmaports --work /home/pmos/.local/var/pmbootstrap export
+            "
+          
+          cp -rv /tmp/pmbootstrap_work/cache_http/images/* /tmp/out/ || true
           
       - name: Upload artifact
         uses: actions/upload-artifact@v4

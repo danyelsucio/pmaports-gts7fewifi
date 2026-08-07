@@ -1,4 +1,4 @@
-name: Manual Build Process (Double Path Fix)
+name: Manual Build Process (Work Dir Permissions)
 on:
   push:
     branches: ["main", "master"]
@@ -44,31 +44,32 @@ jobs:
               mkdir -p /build && chmod 777 /build &&
               useradd -m -d /build -s /bin/bash pmos &&
               echo 'pmos ALL=(ALL) NOPASSWD:ALL' >> /etc/sudoers &&
-              chown -R pmos:pmos /tmp/out && chown -R pmos:pmos /build &&
 
-              # 2. CLONAR EL REPO OFICIAL Y ENLAZAR TU DISPOSITIVO
+              # 2. DAR PERMISOS DE ESCRITURA AL USUARIO pmos SOBRE SU CARPETA HOME
+              chown -R pmos:pmos /build &&
+              chown -R pmos:pmos /tmp/out &&
+
+              # 3. CLONAR EL REPO OFICIAL Y ENLAZAR TU DISPOSITIVO
               git clone https://gitlab.postmarketos.org/postmarketOS/pmaports.git /home/pmos/pmaports_clean &&
               chown -R pmos:pmos /home/pmos/pmaports_clean &&
               ln -s /home/pmos/mi_repo /home/pmos/pmaports_clean/pmaports-gts7fewifi &&
 
-              # 3. CREAR EL ARCHIVO DE CONFIGURACIÓN EN AMBAS RUTAS
+              # 4. ARCHIVO DE CONFIGURACIÓN EN AMBAS RUTAS
               echo '[pmaports]' > /home/pmos/pmaports_clean/pmaports.cfg &&
               echo 'version = 7' >> /home/pmos/pmaports_clean/pmaports.cfg &&
               echo 'pmbootstrap_min_version = 1.29.0' >> /home/pmos/pmaports_clean/pmaports.cfg &&
               echo 'channel = edge' >> /home/pmos/pmaports_clean/pmaports.cfg &&
-
-              # COPIAMOS EL ARCHIVO A LA RUTA POR DEFECTO PARA ENGAÑAR AL INIT
               mkdir -p /work/y &&
               cp /home/pmos/pmaports_clean/pmaports.cfg /work/y/pmaports.cfg &&
 
-              # 4. EL TRUCO DEFINITIVO: init SIN --aports (pero con el archivo en /work/y)
+              # 5. EL TRUCO DEFINITIVO: init SIN --aports
               sudo -u pmos bash -c \"
                 yes | /pmbootstrap/venv/bin/pmbootstrap init &&
                 /pmbootstrap/venv/bin/pmbootstrap --aports /home/pmos/pmaports_clean install --no-fde &&
                 /pmbootstrap/venv/bin/pmbootstrap --aports /home/pmos/pmaports_clean export
               \"
 
-              # 5. COPIAR ARTEFACTOS
+              # 6. COPIAR ARTEFACTOS
               cp -rv /home/pmos/.local/var/pmbootstrap/cache_http/images/* /tmp/out/ || true;
               cp -rv /tmp/postmarketOS-export/* /tmp/out/ || true;
             "

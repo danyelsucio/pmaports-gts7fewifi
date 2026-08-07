@@ -14,25 +14,30 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y python3-pip git openssl device-tree-compiler bmap-tools
           
-      - name: Install pmbootstrap (stable version 2.x)
+      - name: Install pmbootstrap v2.3.0 (Stable for CI)
         run: |
-          # Instalamos la versión estable desde PyPI en lugar de clonar la 3.x (que es inestable en CI)
-          pip3 install pmbootstrap
+          # Instalamos la versión 2.3.0 estable usando el nombre correcto del paquete de PyPI
+          pip3 install postmarketos-pmbootstrap==2.3.0
           echo "$HOME/.local/bin" >> $GITHUB_PATH
           
-      - name: Manual config setup (Compatible con v2.x)
+      - name: Manual config setup
         run: |
           mkdir -p ~/.config/pmbootstrap
           mkdir -p /tmp/pmbootstrap_work
           
-          # Configuración manual que la versión 2.x entiende perfectamente
-          cat > ~/.config/pmbootstrap.cfg <<EOF
+          # Crear configuración compatible con v2.x
+          cat > ~/.config/pmbootstrap/pmbootstrap.cfg <<EOF
           [pmbootstrap]
           aports = ${{ github.workspace }}
           work = /tmp/pmbootstrap_work
+          device = gts7fewifi
+          channel = edge
+          ui = console
+          extra_space = 0
+          jobs = 2
           EOF
           
-          # Crear el archivo pmaports.cfg OBLIGATORIO
+          # Crear el archivo pmaports.cfg obligatorio en la raíz del repo
           cat > ${{ github.workspace }}/pmaports.cfg <<EOF
           [pmaports]
           version = 7
@@ -43,7 +48,7 @@ jobs:
           
       - name: Build rootfs for gts7fewifi
         run: |
-          # En v2.x, esto es suficiente y NO tiene el error de Git
+          # Con la v2.3.0, esto funcionará sin errores de Git ni de init
           pmbootstrap init
           pmbootstrap install --no-fde
           pmbootstrap export

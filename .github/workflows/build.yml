@@ -20,12 +20,12 @@ jobs:
           pip3 install --user ./pmbootstrap
           echo "$HOME/.local/bin" >> $GITHUB_PATH
           
-      - name: Manual config setup (Skipping broken 'init' entirely)
+      - name: Manual config setup and create pmaports.cfg
         run: |
           mkdir -p ~/.config/pmbootstrap
           mkdir -p /tmp/pmbootstrap_work
           
-          # Escribimos la configuración exacta que necesita
+          # Crear el archivo de configuración de pmbootstrap
           cat > ~/.config/pmbootstrap/pmbootstrap.cfg <<EOF
           [pmbootstrap]
           aports = ${{ github.workspace }}
@@ -37,12 +37,21 @@ jobs:
           jobs = 2
           EOF
           
-          # ¡El truco! Creamos un archivo "fake" que le diga a pmbootstrap que ya pasó por el init
+          # Crear el archivo pmaports.cfg OBLIGATORIO en la raíz del repositorio clonado
+          cat > ${{ github.workspace }}/pmaports.cfg <<EOF
+          [pmaports]
+          version = 7
+          pmbootstrap_min_version = 1.29.0
+          channel = edge
+          supported_root_filesystems = ext4,f2fs,btrfs
+          EOF
+          
+          # Simular que el init ya pasó
           touch ~/.config/pmbootstrap/pmbootstrap_init_done
           
       - name: Build rootfs for gts7fewifi
         run: |
-          # Pasamos --aports aquí para forzar que use nuestra carpeta, ignorando el error del init
+          # Forzamos el uso de la ruta de aports durante el build
           pmbootstrap --aports ${{ github.workspace }} install --no-fde
           pmbootstrap export
           

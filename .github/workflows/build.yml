@@ -18,12 +18,14 @@ jobs:
     - name: Install pmbootstrap from source
       run: |
         git clone https://gitlab.postmarketos.org/postmarketOS/pmbootstrap.git
-        pip3 install --user ./pmbootstrap
+        pip3 install --user./pmbootstrap
         echo "$HOME/.local/bin" >> $GITHUB_PATH
 
     - name: Create configs manually
       run: |
         mkdir -p /tmp/pmbootstrap_work
+        cd ${{ github.workspace }}
+        git remote add origin https://gitlab.postmarketos.org/postmarketOS/pmaports.git 2>/dev/null || git remote set-url origin https://gitlab.postmarketos.org/postmarketOS/pmaports.git
         cat > ${{ github.workspace }}/pmaports.cfg <<'EOF'
         [pmaports]
         version = 7

@@ -1,4 +1,4 @@
-name: Build postmarketOS Image (Official Container)
+name: Manual Build Process (The Final Build)
 on:
   push:
     branches: ["main", "master"]
@@ -9,39 +9,74 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Build using official pmbootstrap container
+      - name: Build custom pmbootstrap Docker image (with tomli and kpartx)
+        run: |
+          docker system prune -af || true
+          
+          cat > Dockerfile <<EOF
+          FROM ubuntu:22.04
+          RUN apt-get update && apt-get install -y python3 python3-pip python3-venv git openssl device-tree-compiler bmap-tools sudo curl kpartx
+          RUN git clone https://gitlab.postmarketos.org/postmarketOS/pmbootstrap.git /pmbootstrap
+          RUN python3 -m venv /pmbootstrap/venv
+          RUN /pmbootstrap/venv/bin/pip install /pmbootstrap tomli
+          WORKDIR /work
+          CMD ["/pmbootstrap/venv/bin/pmbootstrap"]
+          EOF
+          
+          docker build -t pmos-toolbox --no-cache .
+
+      - name: Execute the Ultimate Build Step
         run: |
           mkdir -p /tmp/out
           
-          # Ejecutamos el contenedor oficial y le pasamos 'yes' para responder a todas las preguntas
           docker run --rm -t \
             --entrypoint bash \
-            -v ${{ github.workspace }}:/home/pmos/pmaports \
+            --user root \
+            -v ${{ github.workspace }}:/home/pmos/mi_repo \
             -v /tmp/out:/tmp/out \
             --device /dev/fuse \
             --cap-add SYS_ADMIN \
             --security-opt apparmor:unconfined \
-            ghcr.io/postmarketos/pmbootstrap:latest \
+            pmos-toolbox \
             -c "
-              # Configurar el archivo pmaports.cfg con el dispositivo
-              echo '[pmaports]' > /home/pmos/pmaports/pmaports.cfg &&
-              echo 'version = 7' >> /home/pmos/pmaports/pmaports.cfg &&
-              echo 'pmbootstrap_min_version = 1.29.0' >> /home/pmos/pmaports/pmaports.cfg &&
-              echo 'channel = edge' >> /home/pmos/pmaports/pmaports.cfg &&
+              # 1. PREPARACIÓN DEL ENTORNO
+              mkdir -p /work && chmod 777 /work &&
+              mkdir -p /build && chmod 777 /build &&
+              useradd -m -d /build -s /bin/bash pmos &&
+              echo 'pmos ALL=(ALL) NOPASSWD:ALL' >> /etc/sudoers &&
+              chown -R pmos:pmos /tmp/out && chown -R pmos:pmos /build &&
 
-              # Usamos 'yes' para responder a TODAS las preguntas del init
-              yes | pmbootstrap --aports /home/pmos/pmaports init &&
-              
-              # Instalar y exportar
-              pmbootstrap --aports /home/pmos/pmaports install --no-fde &&
-              pmbootstrap --aports /home/pmos/pmaports export &&
-              
-              # Copiar los artefactos
-              cp -rv /home/pmos/.local/var/pmbootstrap/cache_http/images/* /tmp/out/ || true
+              # 2. CLONAR EL REPO OFICIAL Y ENLAZAR TU DISPOSITIVO
+              git clone https://gitlab.postmarketos.org/postmarketOS/pmaports.git /home/pmos/pmaports_clean &&
+              chown -R pmos:pmos /home/pmos/pmaports_clean &&
+              ln -s /home/pmos/mi_repo /home/pmos/pmaports_clean/pmaports-gts7fewifi &&
+
+              # 3. ARCHIVO DE CONFIGURACIÓN DE PMAPORTS
+              echo '[pmaports]' > /home/pmos/pmaports_clean/pmaports.cfg &&
+              echo 'version = 7' >> /home/pmos/pmaports_clean/pmaports.cfg &&
+              echo 'pmbootstrap_min_version = 1.29.0' >> /home/pmos/pmaports_clean/pmaports.cfg &&
+              echo 'channel = edge' >> /home/pmos/pmaports_clean/pmaports.cfg &&
+
+              # 4. LA CLAVE: CREAR LA CARPETA DE TRABAJO ANTES DEL INSTALL
+              sudo -u pmos bash -c \"
+                mkdir -p /tmp/pmos_work &&
+                chown -R pmos:pmos /tmp/pmos_work &&
+
+                mkdir -p /build/.config/pmbootstrap &&
+                echo '[pmbootstrap]' > /build/.config/pmbootstrap/pmbootstrap.cfg &&
+                echo 'aports = /home/pmos/pmaports_clean' >> /build/.config/pmbootstrap/pmbootstrap.cfg &&
+                echo 'work = /tmp/pmos_work' >> /build/.config/pmbootstrap/pmbootstrap.cfg &&
+                echo 'device = gts7fewifi' >> /build/.config/pmbootstrap/pmbootstrap.cfg &&
+                echo 'channel = edge' >> /build/.config/pmbootstrap/pmbootstrap.cfg &&
+                echo 'ui = console' >> /build/.config/pmbootstrap/pmbootstrap.cfg &&
+                echo 'extra_space = 1500' >> /build/.config/pmbootstrap/pmbootstrap.cfg &&
+
+                # 5. INSTALACIÓN
+                /pmbootstrap/venv/bin/pmbootstrap --config /build/.config/pmbootstrap/pmbootstrap.cfg install --no-fde &&
+                /pmbootstrap/venv/bin/pmbootstrap --config /build/.config/pmbootstrap/pmbootstrap.cfg export
+              \"
+
+              # 6. COPIAR ARTEFACTOS
+              cp -rv /tmp/pmos_work/cache_http/images/* /tmp/out/ || true;
+              cp -rv /tmp/postmarketOS-export/* /tmp/out/ || true;
             "
-      
-      - name: Upload final image
-        uses: actions/upload-artifact@v4
-        with:
-          name: pmos-gts7fewifi-image
-          path: /tmp/out/

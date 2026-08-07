@@ -26,23 +26,13 @@ jobs:
         run: |
           mkdir -p /home/runner/.local/var/pmbootstrap/cache_git
           
-          # 1. Clonar el repo oficial en la ruta que pmbootstrap espera
-          git clone --depth 1 https://gitlab.postmarketos.org/postmarketOS/pmaports.git /home/runner/.local/var/pmbootstrap/cache_git/pmaports
+          # 1. Clonar el repo oficial usando la rama master (que sí existe en el remote)
+          git clone --branch master --depth 1 https://gitlab.postmarketos.org/postmarketOS/pmaports.git /home/runner/.local/var/pmbootstrap/cache_git/pmaports
           
-          # 2. Configurar el remote y descargar la rama master
-          cd /home/runner/.local/var/pmbootstrap/cache_git/pmaports
-          git remote set-url origin https://gitlab.postmarketos.org/postmarketOS/pmaports.git
-          git fetch origin master --depth 1
-          
-          # 3. EL TRUCO FINAL: Crear una rama local 'master' que rastree a 'origin/master'.
-          # Esto hace que 'git show origin/master:channels.cfg' funcione.
-          git checkout -b master --track origin/master
-          
-          # 4. Copiar el contenido de TU repositorio (tu dispositivo gts7fewifi) al repositorio oficial.
-          # Sobrescribimos cualquier cosa y añadimos tu carpeta device.
+          # 2. Copiar el contenido de TU repositorio (tu dispositivo gts7fewifi) al repositorio oficial.
           cp -rf ${{ github.workspace }}/* /home/runner/.local/var/pmbootstrap/cache_git/pmaports/
           
-          # 5. Crear pmaports.cfg en el repositorio oficial (ya que copiamos todo)
+          # 3. Crear pmaports.cfg en el repositorio oficial
           cat > /home/runner/.local/var/pmbootstrap/cache_git/pmaports/pmaports.cfg <<EOF
           [pmaports]
           version = 7
@@ -54,10 +44,9 @@ jobs:
           mkdir -p /tmp/pmbootstrap_work
           mkdir -p /tmp/out
           
-      - name: Build (The Absolute Final Piece)
+      - name: Build (The Ultimate Final Piece)
         run: |
           # Ahora pmbootstrap encontrará 'origin/master' y el dispositivo gts7fewifi.
-          # Apuntamos 'aports' directamente al repositorio clonado oficial.
           pmbootstrap \
             -c aports=/home/runner/.local/var/pmbootstrap/cache_git/pmaports \
             -c work=/tmp/pmbootstrap_work \

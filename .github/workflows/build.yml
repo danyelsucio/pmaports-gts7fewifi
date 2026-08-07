@@ -1,4 +1,4 @@
-name: Manual Build Process (Config Root Fix)
+name: Manual Build Process (Force Aports in Install)
 on:
   push:
     branches: ["main", "master"]
@@ -60,8 +60,9 @@ jobs:
               # 4. EL TRUCO DEFINITIVO: yes | pmbootstrap init
               sudo -u pmos bash -c \"
                 yes | /pmbootstrap/venv/bin/pmbootstrap init &&
-                /pmbootstrap/venv/bin/pmbootstrap install --no-fde &&
-                /pmbootstrap/venv/bin/pmbootstrap export
+                # FORZAMOS EL --aports EN EL INSTALL
+                /pmbootstrap/venv/bin/pmbootstrap --aports /home/pmos/pmaports_clean install --no-fde &&
+                /pmbootstrap/venv/bin/pmbootstrap --aports /home/pmos/pmaports_clean export
               \"
 
               # 5. COPIAR ARTEFACTOS

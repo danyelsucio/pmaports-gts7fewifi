@@ -1,4 +1,4 @@
-name: Manual Build Process (Ultimate Git Fix v3)
+name: Manual Build Process (Ultimate Git Fix v4)
 on:
   push:
     branches: ["main", "master"]
@@ -55,10 +55,11 @@ jobs:
               echo 'pmbootstrap_min_version = 1.29.0' >> /home/pmos/pmaports/pmaports.cfg &&
               echo 'channel = edge' >> /home/pmos/pmaports/pmaports.cfg &&
 
-              # 3. ARREGLO DE SEGURIDAD DE GIT Y AÑADIR REMOTE
+              # 3. ARREGLO DE SEGURIDAD DE GIT Y ACTUALIZAR REMOTE
               cd /home/pmos/pmaports &&
               git config --global --add safe.directory /home/pmos/pmaports &&
-              git remote add origin https://gitlab.postmarketos.org/postmarketOS/pmaports.git &&
+              # CAMBIO CLAVE: Usamos set-url en lugar de add
+              git remote set-url origin https://gitlab.postmarketos.org/postmarketOS/pmaports.git &&
 
               # 4. PREPARAR EL ARCHIVO DE CONFIGURACIÓN
               sudo -u pmos bash -c \"

@@ -9,13 +9,13 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Build custom pmbootstrap Docker image (with tomli)
+      - name: Build custom pmbootstrap Docker image (with tomli and kpartx)
         run: |
           docker system prune -af || true
           
           cat > Dockerfile <<EOF
           FROM ubuntu:22.04
-          RUN apt-get update && apt-get install -y python3 python3-pip python3-venv git openssl device-tree-compiler bmap-tools sudo curl
+          RUN apt-get update && apt-get install -y python3 python3-pip python3-venv git openssl device-tree-compiler bmap-tools sudo curl kpartx
           RUN git clone https://gitlab.postmarketos.org/postmarketOS/pmbootstrap.git /pmbootstrap
           RUN python3 -m venv /pmbootstrap/venv
           RUN /pmbootstrap/venv/bin/pip install /pmbootstrap tomli

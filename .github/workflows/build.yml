@@ -1,4 +1,4 @@
-name: Manual Build Process (Tmp Permissions Fix)
+name: Manual Build Process (The Compilation)
 on:
   push:
     branches: ["main", "master"]
@@ -44,7 +44,7 @@ jobs:
               echo 'pmos ALL=(ALL) NOPASSWD:ALL' >> /etc/sudoers &&
               chown -R pmos:pmos /build &&
 
-              # 2. CREAR LA CARPETA DE TRABAJO CON PERMISOS TOTALES
+              # 2. CREAR LA CARPETA DE TRABAJO Y DARLE PERMISOS
               mkdir -p /tmp/pmos_work &&
               chmod 777 /tmp/pmos_work &&
               chown -R pmos:pmos /tmp/pmos_work &&

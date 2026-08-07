@@ -40,12 +40,14 @@ jobs:
             --security-opt apparmor:unconfined \
             pmos-toolbox \
             -c "
+              # 0. ELIMINAR LA CACHÉ DE PMBOOTSTRAP QUE CAUSA EL ERROR DE MIGRACIÓN
+              rm -rf /home/pmos/.local/var/pmbootstrap &&
+
               # 1. CREAR EL USUARIO Y PERMISOS
               mkdir -p /build &&
               chmod 777 /build &&
               useradd -m -d /build -s /bin/bash pmos &&
               echo 'pmos ALL=(ALL) NOPASSWD:ALL' >> /etc/sudoers &&
-              chown -R pmos:pmos /home/pmos/.local/var/pmbootstrap &&
               chown -R pmos:pmos /tmp/out &&
               chown -R pmos:pmos /build &&
 

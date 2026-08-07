@@ -13,12 +13,11 @@ jobs:
         run: |
           docker build -t pmos-toolbox .
 
-      - name: Execute the Step-by-Step Build Process (Like in Termux)
+      - name: Execute the Step-by-Step Build Process
         run: |
           mkdir -p /tmp/pmbootstrap_work
           mkdir -p /tmp/out
           
-          # EJECUTAMOS DENTRO DEL CONTENEDOR PARA TENER CONTROL TOTAL
           docker run --rm -t \
             --entrypoint bash \
             -v ${{ github.workspace }}:/home/pmos/pmaports \
@@ -30,22 +29,19 @@ jobs:
             pmos-toolbox \
             -c "
               echo '--- PASO 1: CONFIGURAR EL ENTORNO ---'
-              # Creamos el archivo de configuración de pmaports manualmente
-              echo '[pmaports]' > /home/pmos/pmaports/pmaports.cfg &&
-              echo 'version = 7' >> /home/pmos/pmaports/pmaports.cfg &&
-              echo 'pmbootstrap_min_version = 1.29.0' >> /home/pmos/pmaports/pmaports.cfg &&
-              echo 'channel = edge' >> /home/pmos/pmaports/pmaports.cfg &&
+              echo '[pmaports]' > /home/pmos/pmaports/pmaports.cfg
+              echo 'version = 7' >> /home/pmos/pmaports/pmaports.cfg
+              echo 'pmbootstrap_min_version = 1.29.0' >> /home/pmos/pmaports/pmaports.cfg
+              echo 'channel = edge' >> /home/pmos/pmaports/pmaports.cfg
 
               echo '--- PASO 2: DESCARGAR E INSTALAR PMBOOTSTRAP ---'
-              # Clonamos e instalamos pmbootstrap en un entorno virtual
-              git clone https://gitlab.postmarketos.org/postmarketOS/pmbootstrap.git /pmbootstrap_src &&
-              python3 -m venv /venv &&
-              /venv/bin/pip install /pmbootstrap_src &&
+              git clone https://gitlab.postmarketos.org/postmarketOS/pmbootstrap.git /pmbootstrap_src
+              python3 -m venv /venv
+              /venv/bin/pip install /pmbootstrap_src
 
               echo '--- PASO 3: PREPARAR LA CONFIGURACIÓN DEL DISPOSITIVO ---'
-              # Creamos el archivo de configuración (respondiendo las preguntas del init por adelantado)
-              mkdir -p /home/pmos/.config/pmbootstrap &&
-              cat > /home/pmos/.config/pmbootstrap/pmbootstrap.cfg <<EOF
+              mkdir -p /home/pmos/.config/pmbootstrap
+              cat > /home/pmos/.config/pmbootstrap/pmbootstrap.cfg <<CFG_EOF
               [pmbootstrap]
               aports = /home/pmos/pmaports
               work = /home/pmos/.local/var/pmbootstrap
@@ -53,23 +49,19 @@ jobs:
               channel = edge
               ui = console
               extra_space = 1500
-              EOF
+              CFG_EOF
 
               echo '--- PASO 4: EL PASO DEL BOOTSTRAP (INIT) ---'
-              # Simulamos la interacción manual (respondemos a las preguntas)
-              # Esto es como si estuvieras escribiendo en la terminal de Termux
               printf '/home/pmos/.local/var/pmbootstrap\nedge\nsamsung\ngts7fewifi\n' | /venv/bin/pmbootstrap --aports /home/pmos/pmaports init
 
               echo '--- PASO 5: COMPILAR (INSTALL) ---'
-              # Aquí es donde se descargan los paquetes y se compila todo.
-              # Si falla aquí, verás el error exacto en los logs de GitHub.
-              /venv/bin/pmbootstrap --aports /home/pmos/pmaports install --no-fde --details-to-stdout &&
+              /venv/bin/pmbootstrap --aports /home/pmos/pmaports install --no-fde --details-to-stdout
 
               echo '--- PASO 6: EXPORTAR LA IMAGEN ---'
-              /venv/bin/pmbootstrap --aports /home/pmos/pmaports export &&
-              
+              /venv/bin/pmbootstrap --aports /home/pmos/pmaports export
+
               echo '--- PASO 7: COPIAR ARTEFACTOS ---'
-              cp -rv /home/pmos/.local/var/pmbootstrap/cache_http/images/* /tmp/out/ || true &&
+              cp -rv /home/pmos/.local/var/pmbootstrap/cache_http/images/* /tmp/out/ || true
               cp -rv /tmp/postmarketOS-export/* /tmp/out/ || true
             "
 

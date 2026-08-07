@@ -20,12 +20,12 @@ jobs:
           pip3 install --user ./pmbootstrap
           echo "$HOME/.local/bin" >> $GITHUB_PATH
           
-      - name: Configure pmbootstrap, fetch remote and create files
+      - name: Pre-configure pmbootstrap (Fix Git remote and create files)
         run: |
           mkdir -p ~/.config/pmbootstrap
           mkdir -p /tmp/pmbootstrap_work
           
-          # Configuración principal
+          # 1. Configuración principal
           cat > ~/.config/pmbootstrap/pmbootstrap.cfg <<EOF
           [pmbootstrap]
           aports = ${{ github.workspace }}
@@ -37,7 +37,7 @@ jobs:
           jobs = 2
           EOF
           
-          # pmaports.cfg obligatorio
+          # 2. Archivo pmaports.cfg obligatorio
           cat > ${{ github.workspace }}/pmaports.cfg <<EOF
           [pmaports]
           version = 7
@@ -46,18 +46,19 @@ jobs:
           supported_root_filesystems = ext4,f2fs,btrfs
           EOF
           
-          # CAMBIO CLAVE: Forzamos el remote oficial y DESCARGAMOS su rama master
+          # 3. Arreglar el Git remote y traer channels.cfg
           cd ${{ github.workspace }}
           git remote set-url origin https://gitlab.postmarketos.org/postmarketOS/pmaports.git
           git fetch origin master --depth 1
           
-          # Engañar a pmbootstrap para que no pregunte
-          touch ~/.config/pmbootstrap/pmbootstrap_init_done
-          
       - name: Build rootfs for gts7fewifi
         run: |
-          # ¡Ahora channels.cfg existe! El build comenzará.
-          pmbootstrap --aports ${{ github.workspace }} install --no-fde
+          # TRUCO FINAL: Ejecutamos 'init' primero.
+          # Como ya tenemos el archivo .cfg creado, simplemente dirá "Config is up to date" y continuará.
+          pmbootstrap init
+          
+          # Ahora sí, el install usará la configuración que ya creamos
+          pmbootstrap install --no-fde
           pmbootstrap export
           
           mkdir -p /tmp/out

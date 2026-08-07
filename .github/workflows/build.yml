@@ -24,13 +24,13 @@ jobs:
     - name: Create configs manually
       run: |
         mkdir -p /tmp/pmbootstrap_work
-        # Crea pmaports.cfg si no existe - con espacios bien puestos
-        if [ ! -f "${{ github.workspace }}/pmaports.cfg" ]; then
-          echo "[pmaports]" > ${{ github.workspace }}/pmaports.cfg
-          echo "channel = edge" >> ${{ github.workspace }}/pmaports.cfg
-        fi
-        ls -la ${{ github.workspace }}/pmaports.cfg
-        cat ${{ github.workspace }}/pmaports.cfg
+        cat > ${{ github.workspace }}/pmaports.cfg <<'EOF'
+        [pmaports]
+        version = 7
+        pmbootstrap_min_version = 1.29.0
+        channel = edge
+        supported_root_filesystems = ext4,f2fs,btrfs
+        EOF
         mkdir -p ~/.config/pmbootstrap
         cat > ~/.config/pmbootstrap.cfg <<EOF
         [pmbootstrap]
@@ -40,7 +40,7 @@ jobs:
         device = gts7fewifi
         EOF
         cp ~/.config/pmbootstrap.cfg ~/.config/pmbootstrap/pmbootstrap.cfg
-        pmbootstrap --aports ${{ github.workspace }} --work /tmp/pmbootstrap_work status || true
+        pmbootstrap --aports ${{ github.workspace }} --work /tmp/pmbootstrap_work status
 
     - name: Build rootfs for gts7fewifi
       run: |

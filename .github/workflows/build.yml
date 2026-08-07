@@ -28,21 +28,16 @@ jobs:
             --security-opt apparmor:unconfined \
             pmos-toolbox \
             -c "
-              # 1. CREAMOS UNA CARPETA DE TRABAJO NUEVA Y LIMPIA (/build) como root
+              # 1. CREAMOS CARPETA DE TRABAJO Y USUARIO
               mkdir -p /build &&
               chmod 777 /build &&
-
-              # 2. CREAMOS AL USUARIO pmos Y LE DAMOS PERMISOS SOBRE /build
               useradd -m -d /build -s /bin/bash pmos &&
               echo 'pmos ALL=(ALL) NOPASSWD:ALL' >> /etc/sudoers &&
-
-              # 3. ARREGLAMOS PERMISOS DE LAS CARPETAS MONTADAS
               chown -R pmos:pmos /home/pmos/pmaports &&
               chown -R pmos:pmos /home/pmos/.local/var/pmbootstrap &&
               chown -R pmos:pmos /tmp/out &&
               chown -R pmos:pmos /build &&
 
-              # 4. EJECUTAMOS EL RESTO DE COMANDOS COMO EL USUARIO pmos
               sudo -u pmos bash -c \"
                 echo '--- PASO 1: CONFIGURAR EL ENTORNO ---';
                 echo '[pmaports]' > /home/pmos/pmaports/pmaports.cfg;
@@ -51,7 +46,6 @@ jobs:
                 echo 'channel = edge' >> /home/pmos/pmaports/pmaports.cfg;
 
                 echo '--- PASO 2: DESCARGAR E INSTALAR PMBOOTSTRAP ---';
-                # USAMOS LA CARPETA NUEVA /build PARA TODO
                 git clone https://gitlab.postmarketos.org/postmarketOS/pmbootstrap.git /build/pmbootstrap_src &&
                 python3 -m venv /build/venv &&
                 /build/venv/bin/pip install /build/pmbootstrap_src tomli;
@@ -70,6 +64,8 @@ jobs:
                 printf '/home/pmos/.local/var/pmbootstrap\nedge\nsamsung\ngts7fewifi\n' | /build/venv/bin/pmbootstrap --aports /home/pmos/pmaports init;
 
                 echo '--- PASO 5: COMPILAR (INSTALL) ---';
+                # FIX PARA EL ERROR DE GIT: Forzamos el remote antes de compilar
+                cd /home/pmos/pmaports && git remote add origin https://gitlab.postmarketos.org/postmarketOS/pmaports.git && git fetch origin master --depth 1;
                 /build/venv/bin/pmbootstrap --aports /home/pmos/pmaports install --no-fde;
 
                 echo '--- PASO 6: EXPORTAR LA IMAGEN ---';

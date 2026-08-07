@@ -1,4 +1,4 @@
-name: Manual Build Process (Final Fix + Work Dir)
+name: Manual Build Process (Tmp Permissions Fix)
 on:
   push:
     branches: ["main", "master"]
@@ -44,25 +44,30 @@ jobs:
               echo 'pmos ALL=(ALL) NOPASSWD:ALL' >> /etc/sudoers &&
               chown -R pmos:pmos /build &&
 
-              # 2. CLONAR EL REPO OFICIAL Y ENLAZAR TU DISPOSITIVO
+              # 2. CREAR LA CARPETA DE TRABAJO CON PERMISOS TOTALES
+              mkdir -p /tmp/pmos_work &&
+              chmod 777 /tmp/pmos_work &&
+              chown -R pmos:pmos /tmp/pmos_work &&
+
+              # 3. CLONAR EL REPO OFICIAL Y ENLAZAR TU DISPOSITIVO
               git clone https://gitlab.postmarketos.org/postmarketOS/pmaports.git /home/pmos/pmaports_clean &&
               chown -R pmos:pmos /home/pmos/pmaports_clean &&
               ln -s /home/pmos/mi_repo /home/pmos/pmaports_clean/pmaports-gts7fewifi &&
 
-              # 3. ARCHIVO DE CONFIGURACIÓN DE PMAPORTS
+              # 4. ARCHIVO DE CONFIGURACIÓN DE PMAPORTS
               echo '[pmaports]' > /home/pmos/pmaports_clean/pmaports.cfg &&
               echo 'version = 7' >> /home/pmos/pmaports_clean/pmaports.cfg &&
               echo 'pmbootstrap_min_version = 1.29.0' >> /home/pmos/pmaports_clean/pmaports.cfg &&
               echo 'channel = edge' >> /home/pmos/pmaports_clean/pmaports.cfg &&
 
-              # 4. EL TRUCO DEFINITIVO: Usar --work /tmp/pmos_work
+              # 5. EJECUTAR EL INIT Y EL INSTALL
               sudo -u pmos bash -c \"
                 yes | /pmbootstrap/venv/bin/pmbootstrap --work /tmp/pmos_work init &&
                 /pmbootstrap/venv/bin/pmbootstrap --work /tmp/pmos_work --aports /home/pmos/pmaports_clean install --no-fde &&
                 /pmbootstrap/venv/bin/pmbootstrap --work /tmp/pmos_work --aports /home/pmos/pmaports_clean export
               \"
 
-              # 5. COPIAR ARTEFACTOS
+              # 6. COPIAR ARTEFACTOS
               cp -rv /tmp/pmos_work/cache_http/images/* /tmp/out/ || true;
               cp -rv /tmp/postmarketOS-export/* /tmp/out/ || true;
             "

@@ -1,4 +1,4 @@
-name: Manual Build Process (The Final One)
+name: Manual Build Process (The Ultimate KO)
 on:
   push:
     branches: ["main", "master"]
@@ -41,6 +41,9 @@ jobs:
             --security-opt apparmor:unconfined \
             pmos-toolbox \
             -c "
+              # 0. LA CLAVE: BORRAR CUALQUIER RESTO DE CACHÉ ANTES DE CREAR EL USUARIO
+              rm -rf /home/pmos/work_dir_fresh &&
+
               # 1. CREAR CARPETA HOME DEL USUARIO COMO ROOT
               mkdir -p /home/pmos &&
               chown 1000:1000 /home/pmos &&

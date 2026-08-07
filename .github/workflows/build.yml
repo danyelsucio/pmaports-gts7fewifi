@@ -12,35 +12,56 @@ jobs:
       - name: Install system dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y git bmap-tools
+          sudo apt-get install -y python3-pip git openssl device-tree-compiler bmap-tools
           
-      - name: Build rootfs using ghcr.io pmbootstrap image
+      - name: Install pmbootstrap v3.4.0 (Latest stable)
         run: |
-          chmod -R 755 ${{ github.workspace }}
+          # Clonamos la versión estable 3.4.0 (que ya tiene todos los flags arreglados)
+          git clone https://gitlab.postmarketos.org/postmarketOS/pmbootstrap.git -b 3.4.0 --depth 1
+          pip3 install --user ./pmbootstrap
+          echo "$HOME/.local/bin" >> $GITHUB_PATH
           
-          # CAMBIO CLAVE: Usamos ghcr.io (GitHub Container Registry)
-          # Esto evita los errores de denegación de acceso de GitLab y Docker Hub.
-          docker run --rm -t \
-            -v ${{ github.workspace }}:/home/pmos/pmaports \
-            -v /tmp/pmbootstrap_work:/home/pmos/.local/var/pmbootstrap \
-            --device /dev/fuse \
-            --cap-add SYS_ADMIN \
-            --security-opt apparmor:unconfined \
-            ghcr.io/postmarketos/pmbootstrap:latest \
-            sh -c "
-              echo '[pmaports]' > /home/pmos/pmaports/pmaports.cfg &&
-              echo 'version = 7' >> /home/pmos/pmaports/pmaports.cfg &&
-              echo 'pmbootstrap_min_version = 1.29.0' >> /home/pmos/pmaports/pmaports.cfg &&
-              echo 'channel = edge' >> /home/pmos/pmaports/pmaports.cfg &&
-              
-              pmbootstrap --aports /home/pmos/pmaports --work /home/pmos/.local/var/pmbootstrap init --yes --device gts7fewifi --channel edge &&
-              pmbootstrap --aports /home/pmos/pmaports --work /home/pmos/.local/var/pmbootstrap install --no-fde &&
-              pmbootstrap --aports /home/pmos/pmaports --work /home/pmos/.local/var/pmbootstrap export
-            "
+      - name: Configure environment and build
+        run: |
+          mkdir -p ~/.config/pmbootstrap
+          mkdir -p /tmp/pmbootstrap_work
           
+          # 1. Crear configuración manual
+          cat > ~/.config/pmbootstrap/pmbootstrap.cfg <<EOF
+          [pmbootstrap]
+          aports = ${{ github.workspace }}
+          work = /tmp/pmbootstrap_work
+          device = gts7fewifi
+          channel = edge
+          ui = console
+          extra_space = 1500
+          jobs = 2
+          EOF
+          
+          # 2. Crear pmaports.cfg
+          cat > ${{ github.workspace }}/pmaports.cfg <<EOF
+          [pmaports]
+          version = 7
+          pmbootstrap_min_version = 1.29.0
+          channel = edge
+          supported_root_filesystems = ext4,f2fs,btrfs
+          EOF
+          
+          # 3. Arreglar el remote de Git y obtener el channels.cfg
+          cd ${{ github.workspace }}
+          git remote set-url origin https://gitlab.postmarketos.org/postmarketOS/pmaports.git
+          git fetch origin master --depth 1
+          
+          # 4. Ejecutar init con --yes (ahora SÍ funciona en v3.4.0)
+          pmbootstrap --aports ${{ github.workspace }} init --yes
+          
+          # 5. Compilar con --details-to-stdout (ahora SÍ funciona)
+          pmbootstrap --aports ${{ github.workspace }} install --no-fde --details-to-stdout
+          pmbootstrap export
+          
+          # 6. Copiar artefactos
           mkdir -p /tmp/out
-          sudo cp -rv /tmp/pmbootstrap_work/cache_http/images/* /tmp/out/ || true
-          sudo chmod -R 755 /tmp/out
+          cp -rv /tmp/postmarketOS-export/* /tmp/out/ || true
           
       - name: Upload artifact
         uses: actions/upload-artifact@v4

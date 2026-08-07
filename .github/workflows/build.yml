@@ -25,14 +25,14 @@ jobs:
             --cap-add SYS_ADMIN \
             --security-opt apparmor:unconfined \
             pmbootstrap-local \
-            sh -c "
+            /bin/bash -c "
               echo '[pmaports]' > /home/pmos/pmaports/pmaports.cfg &&
               echo 'version = 7' >> /home/pmos/pmaports/pmaports.cfg &&
               echo 'pmbootstrap_min_version = 1.29.0' >> /home/pmos/pmaports/pmaports.cfg &&
               echo 'channel = edge' >> /home/pmos/pmaports/pmaports.cfg &&
               
               pmbootstrap --aports /home/pmos/pmaports --work /home/pmos/.local/var/pmbootstrap init --yes --device gts7fewifi --channel edge &&
-              pmbootstrap --aports /home/pmos/pmaports --work /home/pmos/.local/var/pmbootstrap install --no-fde &&
+              pmbootstrap --aports /home/pmos/pmaports --work /home/pmos/.local/var/pmbootstrap install --no-fde --details-to-stdout &&
               pmbootstrap --aports /home/pmos/pmaports --work /home/pmos/.local/var/pmbootstrap export
             "
           

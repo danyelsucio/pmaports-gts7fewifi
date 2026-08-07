@@ -60,13 +60,13 @@ jobs:
                 echo 'ui = console' >> /build/.config/pmbootstrap/pmbootstrap.cfg;
                 echo 'extra_space = 1500' >> /build/.config/pmbootstrap/pmbootstrap.cfg;
 
-                echo '--- PASO 4: ARREGLAR EL GIT ---';
-                # Cambiamos la URL del remote y hacemos fetch
-                cd /home/pmos/pmaports &&
-                git remote set-url origin https://gitlab.postmarketos.org/postmarketOS/pmaports.git &&
-                git fetch origin master --depth 1 &&
-                # EL TRUCO DEFINITIVO: Forzamos la creación de la rama main local
-                git branch -f main origin/master;
+                echo '--- PASO 4: EL TRUCO DEL SIGLO (Symlink) ---';
+                cd /home/pmos/pmaports;
+                git remote set-url origin https://gitlab.postmarketos.org/postmarketOS/pmaports.git;
+                git fetch origin master --depth 1;
+                # 1. Creamos una rama fake main y un symlink
+                git branch -f main2 origin/master;
+                ln -s .git/refs/heads/main2 .git/refs/heads/main;
 
                 echo '--- PASO 5: COMPILAR (INSTALL) ---';
                 /build/venv/bin/pmbootstrap --config /build/.config/pmbootstrap/pmbootstrap.cfg install --no-fde;

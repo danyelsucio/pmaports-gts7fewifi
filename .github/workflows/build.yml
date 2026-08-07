@@ -1,4 +1,4 @@
-name: Manual Build Process (Ultimate Git Fix v5)
+name: Manual Build Process (Ultimate Git Fix v6)
 on:
   push:
     branches: ["main", "master"]
@@ -32,7 +32,7 @@ jobs:
           
           docker run --rm -t \
             --entrypoint bash \
-            -v ${{ github.workspace }}:/home/pmos/pmaports \
+            -v ${{ github.workspace }}:/home/pmos/mi_repo \
             -v /tmp/pmbootstrap_work:/home/pmos/.local/var/pmbootstrap \
             -v /tmp/out:/tmp/out \
             --device /dev/fuse \
@@ -49,26 +49,22 @@ jobs:
               chown -R pmos:pmos /tmp/out &&
               chown -R pmos:pmos /build &&
 
-              # 2. CREAR EL ARCHIVO pmaports.cfg EN LA RAÍZ
-              echo '[pmaports]' > /home/pmos/pmaports/pmaports.cfg &&
-              echo 'version = 7' >> /home/pmos/pmaports/pmaports.cfg &&
-              echo 'pmbootstrap_min_version = 1.29.0' >> /home/pmos/pmaports/pmaports.cfg &&
-              echo 'channel = edge' >> /home/pmos/pmaports/pmaports.cfg &&
+              # 2. CREAR UN CLON LIMPIO DEL REPOSITORIO OFICIAL
+              git clone https://gitlab.postmarketos.org/postmarketOS/pmaports.git /home/pmos/pmaports_clean &&
+              # HACER UN ENLACE SIMBÓLICO DE TU CARPETA (CON EL DISPOSITIVO) DENTRO DEL CLON LIMPIO
+              ln -s /home/pmos/mi_repo /home/pmos/pmaports_clean/pmaports-gts7fewifi &&
 
-              # 3. ARREGLO COMPLETO DE GIT
-              cd /home/pmos/pmaports &&
-              git config --global --add safe.directory /home/pmos/pmaports &&
-              git remote set-url origin https://gitlab.postmarketos.org/postmarketOS/pmaports.git &&
-              # FORZAMOS LA CONFIGURACIÓN DE LA RAMA PRINCIPAL
-              git branch -m master main 2>/dev/null || true &&
-              git fetch origin main &&
-              git branch -u origin/main main 2>/dev/null || true &&
+              # 3. CREAR EL ARCHIVO pmaports.cfg EN LA RAÍZ DEL CLON LIMPIO
+              echo '[pmaports]' > /home/pmos/pmaports_clean/pmaports.cfg &&
+              echo 'version = 7' >> /home/pmos/pmaports_clean/pmaports.cfg &&
+              echo 'pmbootstrap_min_version = 1.29.0' >> /home/pmos/pmaports_clean/pmaports.cfg &&
+              echo 'channel = edge' >> /home/pmos/pmaports_clean/pmaports.cfg &&
 
               # 4. PREPARAR EL ARCHIVO DE CONFIGURACIÓN
               sudo -u pmos bash -c \"
                 mkdir -p /build/.config/pmbootstrap;
                 echo '[pmbootstrap]' > /build/.config/pmbootstrap/pmbootstrap.cfg;
-                echo 'aports = /home/pmos/pmaports' >> /build/.config/pmbootstrap/pmbootstrap.cfg;
+                echo 'aports = /home/pmos/pmaports_clean' >> /build/.config/pmbootstrap/pmbootstrap.cfg;
                 echo 'work = /home/pmos/.local/var/pmbootstrap' >> /build/.config/pmbootstrap/pmbootstrap.cfg;
                 echo 'device = gts7fewifi' >> /build/.config/pmbootstrap/pmbootstrap.cfg;
                 echo 'channel = edge' >> /build/.config/pmbootstrap/pmbootstrap.cfg;

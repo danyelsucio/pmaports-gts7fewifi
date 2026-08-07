@@ -63,22 +63,18 @@ jobs:
                 echo '--- PASO 4: DESCARGAR EL CHANNELS.CFG ---';
                 curl -L https://gitlab.postmarketos.org/postmarketOS/pmaports/-/raw/master/channels.cfg -o /home/pmos/pmaports/channels.cfg;
 
-                echo '--- PASO 5: EL TRUCO DEFINITIVO PARA LA 3.11.1 ---';
-                # 1. Arreglamos el remote de Git
-                cd /home/pmos/pmaports && 
-                git remote set-url origin https://gitlab.postmarketos.org/postmarketOS/pmaports.git &&
-                git fetch origin master --depth 1;
-                
-                # 2. Engañamos a pmbootstrap tocando un archivo que le dice que el init ya se ejecutó
-                touch /build/.config/pmbootstrap/pmbootstrap_init_done;
+                echo '--- PASO 5: EL COMANDO MÁGICO (pmbootstrap pull) ---';
+                # Ejecutamos pull para que pmbootstrap arregle el remote y descargue channels.cfg correctamente
+                /build/venv/bin/pmbootstrap --aports /home/pmos/pmaports pull;
 
-                # 3. Ejecutamos el install sin flags conflictivos
+                echo '--- PASO 6: COMPILAR (INSTALL) ---';
+                # Ahora que el remote y channels.cfg están correctos, ejecutamos el install
                 /build/venv/bin/pmbootstrap --config /build/.config/pmbootstrap/pmbootstrap.cfg install --no-fde;
 
-                echo '--- PASO 6: EXPORTAR LA IMAGEN ---';
+                echo '--- PASO 7: EXPORTAR LA IMAGEN ---';
                 /build/venv/bin/pmbootstrap --config /build/.config/pmbootstrap/pmbootstrap.cfg export;
 
-                echo '--- PASO 7: COPIAR ARTEFACTOS ---';
+                echo '--- PASO 8: COPIAR ARTEFACTOS ---';
                 cp -rv /home/pmos/.local/var/pmbootstrap/cache_http/images/* /tmp/out/ || true;
                 cp -rv /tmp/postmarketOS-export/* /tmp/out/ || true;
               \"

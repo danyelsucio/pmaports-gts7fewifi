@@ -40,13 +40,14 @@ jobs:
             --security-opt apparmor:unconfined \
             pmos-toolbox \
             -c "
-              # 1. CREAR EL USUARIO Y PERMISOS
+              # 1. CREAR EL USUARIO Y PERMISOS (INCLUYENDO LA CARPETA HOME COMPLETA)
               mkdir -p /build &&
               chmod 777 /build &&
               useradd -m -d /build -s /bin/bash pmos &&
               echo 'pmos ALL=(ALL) NOPASSWD:ALL' >> /etc/sudoers &&
               chown -R pmos:pmos /tmp/out &&
               chown -R pmos:pmos /build &&
+              chown -R pmos:pmos /home/pmos &&
 
               # 2. CLONAR EL REPO OFICIAL Y DAR PERMISOS
               git clone https://gitlab.postmarketos.org/postmarketOS/pmaports.git /home/pmos/pmaports_clean &&
@@ -59,9 +60,9 @@ jobs:
               echo 'pmbootstrap_min_version = 1.29.0' >> /home/pmos/pmaports_clean/pmaports.cfg &&
               echo 'channel = edge' >> /home/pmos/pmaports_clean/pmaports.cfg &&
 
-              # 4. EJECUTAR TODO COMO pmos (INCLUYENDO EL BORRADO DE LA CACHÉ)
+              # 4. EJECUTAR TODO COMO pmos
               sudo -u pmos bash -c \"
-                # LIMPIEZA DE CACHÉ (Ahora pmos puede borrarla sin bloqueos)
+                # Limpieza de caché (si existe)
                 rm -rf /home/pmos/.local/var/pmbootstrap;
 
                 mkdir -p /build/.config/pmbootstrap;

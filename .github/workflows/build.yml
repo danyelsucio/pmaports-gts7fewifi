@@ -1,4 +1,4 @@
-name: Manual Build Process (No Work Dir)
+name: Manual Build Process (The Dawn)
 on:
   push:
     branches: ["main", "master"]
@@ -58,7 +58,11 @@ jobs:
               echo 'pmbootstrap_min_version = 1.29.0' >> /home/pmos/pmaports_clean/pmaports.cfg &&
               echo 'channel = edge' >> /home/pmos/pmaports_clean/pmaports.cfg &&
 
-              # 4. CONFIGURAR TODO COMO pmos
+              # 4. TRUCO DEL AMANECER: CREAR LA CARPETA DE TRABAJO MANUALMENTE
+              mkdir -p /tmp/pmos_work &&
+              chown -R pmos:pmos /tmp/pmos_work &&
+
+              # 5. CONFIGURAR TODO COMO pmos
               sudo -u pmos bash -c \"
                 mkdir -p /build/.config/pmbootstrap;
                 echo '[pmbootstrap]' > /build/.config/pmbootstrap/pmbootstrap.cfg;
@@ -69,14 +73,14 @@ jobs:
                 echo 'ui = console' >> /build/.config/pmbootstrap/pmbootstrap.cfg;
                 echo 'extra_space = 1500' >> /build/.config/pmbootstrap/pmbootstrap.cfg;
 
-                # 5. INSTALACIÓN
+                # 6. INSTALACIÓN
                 /pmbootstrap/venv/bin/pmbootstrap --config /build/.config/pmbootstrap/pmbootstrap.cfg install --no-fde;
 
-                # 6. EXPORTACIÓN
+                # 7. EXPORTACIÓN
                 /pmbootstrap/venv/bin/pmbootstrap --config /build/.config/pmbootstrap/pmbootstrap.cfg export;
               \"
 
-              # 7. COPIAR ARTEFACTOS
+              # 8. COPIAR ARTEFACTOS
               cp -rv /tmp/pmos_work/cache_http/images/* /tmp/out/ || true;
               cp -rv /tmp/postmarketOS-export/* /tmp/out/ || true;
             "

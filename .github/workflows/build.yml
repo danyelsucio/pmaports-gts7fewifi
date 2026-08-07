@@ -16,12 +16,10 @@ jobs:
           
       - name: Build rootfs using official pmbootstrap Docker image
         run: |
-          # Nos aseguramos de tener los permisos correctos para compartir la carpeta
           chmod -R 755 ${{ github.workspace }}
           
-          # Ejecutamos pmbootstrap dentro del contenedor oficial.
-          # Esto evita TODOS los bugs de instalación y de ramas eliminadas.
-          docker run --rm -ti \
+          # Eliminamos el flag '-ti' porque GitHub Actions no tiene TTY
+          docker run --rm \
             -v ${{ github.workspace }}:/home/pmos/pmaports \
             -v /tmp/pmbootstrap_work:/home/pmos/.local/var/pmbootstrap \
             --device /dev/fuse \
@@ -39,9 +37,7 @@ jobs:
               pmbootstrap --aports /home/pmos/pmaports --work /home/pmos/.local/var/pmbootstrap export
             "
           
-          # Copiar el resultado al directorio de salida
           mkdir -p /tmp/out
-          # Buscamos la imagen exportada en el directorio de trabajo compartido
           sudo cp -rv /tmp/pmbootstrap_work/cache_http/images/* /tmp/out/ || true
           sudo chmod -R 755 /tmp/out
           

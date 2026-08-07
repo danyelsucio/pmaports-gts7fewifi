@@ -20,7 +20,13 @@ jobs:
           pip3 install --user ./pmbootstrap
           echo "$HOME/.local/bin" >> $GITHUB_PATH
           
-      - name: Initialize pmbootstrap config (Fixes format error)
+      - name: Initialize pmbootstrap config
+        env:
+          PMBOOTSTRAP_APORTS: ${{ github.workspace }}
+          PMBOOTSTRAP_WORK: /tmp/pmbootstrap_work
+          PMBOOTSTRAP_DEVICE: gts7fewifi
+          PMBOOTSTRAP_CHANNEL: edge
+          PMBOOTSTRAP_NO_FDE: "yes"
         run: |
           mkdir -p /tmp/pmbootstrap_work
           cd ${{ github.workspace }}
@@ -29,18 +35,11 @@ jobs:
           git remote add origin https://gitlab.postmarketos.org/postmarketOS/pmaports.git 2>/dev/null || git remote set-url origin https://gitlab.postmarketos.org/postmarketOS/pmaports.git
           git fetch origin main --depth 1 || git fetch origin master --depth 1
           
-          # Generate the new config using pmbootstrap init (non-interactive)
-          # This writes the correct format required by v3.11.1
-          pmbootstrap init --yes \
-            --aports ${{ github.workspace }} \
-            --work /tmp/pmbootstrap_work \
-            --device gts7fewifi \
-            --channel edge \
-            --no-fde
-            
+          # Run init. Since env vars are set, this will skip all prompts automatically
+          pmbootstrap init
+          
       - name: Build rootfs for gts7fewifi
         run: |
-          # Config is already set, just run the commands
           pmbootstrap install --no-fde
           pmbootstrap export
           

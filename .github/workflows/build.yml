@@ -20,11 +20,12 @@ jobs:
           pip3 install --user ./pmbootstrap
           echo "$HOME/.local/bin" >> $GITHUB_PATH
           
-      - name: Pre-create valid config file to avoid init prompts
+      - name: Manual config setup (Skipping broken 'init' entirely)
         run: |
           mkdir -p ~/.config/pmbootstrap
+          mkdir -p /tmp/pmbootstrap_work
           
-          # Generamos el archivo de configuración manualmente con el formato correcto
+          # Escribimos la configuración exacta que necesita
           cat > ~/.config/pmbootstrap/pmbootstrap.cfg <<EOF
           [pmbootstrap]
           aports = ${{ github.workspace }}
@@ -36,18 +37,13 @@ jobs:
           jobs = 2
           EOF
           
-      - name: Initialize pmbootstrap config
-        run: |
-          mkdir -p /tmp/pmbootstrap_work
-          cd ${{ github.workspace }}
-          
-          # Ahora ejecutamos 'init'. Como el archivo de configuración ya existe
-          # y tiene todas las respuestas, no preguntará nada y no fallará.
-          pmbootstrap init
+          # ¡El truco! Creamos un archivo "fake" que le diga a pmbootstrap que ya pasó por el init
+          touch ~/.config/pmbootstrap/pmbootstrap_init_done
           
       - name: Build rootfs for gts7fewifi
         run: |
-          pmbootstrap install --no-fde
+          # Pasamos --aports aquí para forzar que use nuestra carpeta, ignorando el error del init
+          pmbootstrap --aports ${{ github.workspace }} install --no-fde
           pmbootstrap export
           
           mkdir -p /tmp/out

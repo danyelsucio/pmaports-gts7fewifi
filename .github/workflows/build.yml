@@ -1,4 +1,4 @@
-name: Manual Build Process (The yes Method)
+name: Manual Build Process (Config Root Fix)
 on:
   push:
     branches: ["main", "master"]
@@ -51,7 +51,7 @@ jobs:
               chown -R pmos:pmos /home/pmos/pmaports_clean &&
               ln -s /home/pmos/mi_repo /home/pmos/pmaports_clean/pmaports-gts7fewifi &&
 
-              # 3. ARCHIVO DE CONFIGURACIÓN DE PMAPORTS
+              # 3. ARCHIVO DE CONFIGURACIÓN DE PMAPORTS EN LA RAÍZ DEL REPO
               echo '[pmaports]' > /home/pmos/pmaports_clean/pmaports.cfg &&
               echo 'version = 7' >> /home/pmos/pmaports_clean/pmaports.cfg &&
               echo 'pmbootstrap_min_version = 1.29.0' >> /home/pmos/pmaports_clean/pmaports.cfg &&

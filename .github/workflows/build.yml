@@ -29,9 +29,9 @@ jobs:
           # Clonamos el repo oficial en la ruta que pmbootstrap espera
           git clone --depth 1 https://gitlab.postmarketos.org/postmarketOS/pmaports.git /home/runner/.local/var/pmbootstrap/cache_git/pmaports
           
-          # EL TRUCO DEFINITIVO: Configuramos el remote 'origin' para que apunte a master
+          # CORRECCIÓN: Usamos set-url en lugar de add
           cd /home/runner/.local/var/pmbootstrap/cache_git/pmaports
-          git remote add origin https://gitlab.postmarketos.org/postmarketOS/pmaports.git
+          git remote set-url origin https://gitlab.postmarketos.org/postmarketOS/pmaports.git
           git fetch origin master --depth 1
           
           # Enlazar tu repositorio al oficial

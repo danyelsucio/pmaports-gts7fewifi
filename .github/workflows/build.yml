@@ -1,4 +1,4 @@
-name: Manual Build Process (The Final Build)
+name: Manual Build Process (The sed Trick)
 on:
   push:
     branches: ["main", "master"]
@@ -39,6 +39,9 @@ jobs:
             --security-opt apparmor:unconfined \
             pmos-toolbox \
             -c "
+              # 0. EL TRUCO MAESTRO: BORRAR CUALQUIER RESTO DE VERSIÓN
+              rm -rf /tmp/pmos_work &&
+
               # 1. PREPARACIÓN DEL ENTORNO
               mkdir -p /work && chmod 777 /work &&
               mkdir -p /build && chmod 777 /build &&
@@ -57,10 +60,11 @@ jobs:
               echo 'pmbootstrap_min_version = 1.29.0' >> /home/pmos/pmaports_clean/pmaports.cfg &&
               echo 'channel = edge' >> /home/pmos/pmaports_clean/pmaports.cfg &&
 
-              # 4. LA CLAVE: CREAR LA CARPETA DE TRABAJO ANTES DEL INSTALL
+              # 4. LA CLAVE: CREAR LA CARPETA DE TRABAJO Y LUEGO FORZAR LA VERSIÓN CON sed
               sudo -u pmos bash -c \"
                 mkdir -p /tmp/pmos_work &&
                 chown -R pmos:pmos /tmp/pmos_work &&
+                echo '8' > /tmp/pmos_work/.version &&
 
                 mkdir -p /build/.config/pmbootstrap &&
                 echo '[pmbootstrap]' > /build/.config/pmbootstrap/pmbootstrap.cfg &&

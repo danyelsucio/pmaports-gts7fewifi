@@ -1,35 +1,35 @@
-# Reference: <specify kernel source URL>
+# Maintainer: Your Name <you@example.com>
 pkgname=linux-samsung-gts7fewifi
 pkgver=5.4.210
 pkgrel=0
-pkgdesc="Samsung Galaxy Tab S7 FE (SM-T733) downstream kernel"
+pkgdesc="Samsung Galaxy Tab S7 FE (SM-T733) kernel"
 arch="aarch64"
 _carch="arm64"
 _flavor="samsung-gts7fewifi"
-url="https://github.com/danyelsucio/pmaports-gts7fewifi"
+url="https://postmarketos.org"
 license="GPL-2.0-only"
 options="!strip !check !archcheck"
 makedepends="bash bc bison devicepkg-dev flex gcc gmp-dev libelf-dev mpc1-dev mpfr-dev openssl-dev perl python3"
 
-# downstream kernel from stock boot.img / source
-# replace with your kernel repo if you have it
-source="config-samsung-gts7fewifi.aarch64
-        kernel-5.4.patch
+# Downstream kernel source from Samsung
+source="
+    https://github.com/danyelsucio/pmaports-gts7fewifi/raw/main/device/testing/linux-samsung-gts7fewifi/config-samsung-gts7fewifi.aarch64
+    kernel-5.4.patch
 "
-builddir="$srcdir"
 
 prepare() {
     default_prepare
 }
 
 build() {
-    # downstream build is handled externally, we use prebuilt config
-    echo "downstream kernel placeholder"
+    # Usamos la herramienta de postmarketOS para generar el kernel
+    pmbootstrap build linux-samsung-gts7fewifi
 }
 
 package() {
-    # placeholder
+    # Copiamos el kernel compilado
     mkdir -p "$pkgdir"/boot
+    cp "$builddir"/zImage "$pkgdir"/boot/
 }
 
 sha512sums="

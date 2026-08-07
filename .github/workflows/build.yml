@@ -18,21 +18,21 @@ jobs:
         run: |
           chmod -R 755 ${{ github.workspace }}
           
-          # Usamos la imagen oficial sin errores de TTY
+          # Usamos la imagen del Docker Hub oficial (NO tiene restricciones de acceso)
           docker run --rm -t \
             -v ${{ github.workspace }}:/home/pmos/pmaports \
             -v /tmp/pmbootstrap_work:/home/pmos/.local/var/pmbootstrap \
             --device /dev/fuse \
             --cap-add SYS_ADMIN \
             --security-opt apparmor:unconfined \
-            registry.gitlab.com/postmarketos/pmbootstrap:latest \
+            postmarketos/pmbootstrap:latest \
             sh -c "
               echo '[pmaports]' > /home/pmos/pmaports/pmaports.cfg &&
               echo 'version = 7' >> /home/pmos/pmaports/pmaports.cfg &&
               echo 'pmbootstrap_min_version = 1.29.0' >> /home/pmos/pmaports/pmaports.cfg &&
               echo 'channel = edge' >> /home/pmos/pmaports/pmaports.cfg &&
               
-              # EJECUTAMOS TODO DENTRO DEL CONTENEDOR
+              # Usamos la versión estable para evitar el error de EOF
               pmbootstrap --aports /home/pmos/pmaports --work /home/pmos/.local/var/pmbootstrap init --yes --device gts7fewifi --channel edge &&
               pmbootstrap --aports /home/pmos/pmaports --work /home/pmos/.local/var/pmbootstrap install --no-fde &&
               pmbootstrap --aports /home/pmos/pmaports --work /home/pmos/.local/var/pmbootstrap export

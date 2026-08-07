@@ -19,25 +19,24 @@ jobs:
           python3 -m venv venv
           source venv/bin/activate
           
-          # Instalamos la rama main (3.11.1)
+          # Instalamos la rama main para tener la última versión
           pip install "git+https://gitlab.postmarketos.org/postmarketOS/pmbootstrap.git@main"
           echo "$PWD/venv/bin" >> $GITHUB_PATH
           
       - name: Configure environment and build
+        env:
+          # LA CLAVE DE LA BÓVEDA. Esto silencia TODOS los prompts y errores de EOF.
+          PMBOOTSTRAP_CI: "1"
         run: |
           mkdir -p ~/.config/pmbootstrap
           mkdir -p /tmp/pmbootstrap_work
           mkdir -p /tmp/out
           
-          CONFIG_FILE="$HOME/.config/pmbootstrap/pmbootstrap.cfg"
-          APORTS_DIR="${{ github.workspace }}"
-          WORK_DIR="/tmp/pmbootstrap_work"
-          
-          # 1. Crear el archivo de configuración completo
-          cat > "$CONFIG_FILE" <<EOF
+          # 1. Crear el archivo de configuración (con el dispositivo correcto)
+          cat > ~/.config/pmbootstrap/pmbootstrap.cfg <<EOF
           [pmbootstrap]
-          aports = $APORTS_DIR
-          work = $WORK_DIR
+          aports = ${{ github.workspace }}
+          work = /tmp/pmbootstrap_work
           device = gts7fewifi
           channel = edge
           ui = console
@@ -46,7 +45,7 @@ jobs:
           EOF
           
           # 2. Crear pmaports.cfg
-          cat > "$APORTS_DIR/pmaports.cfg" <<EOF
+          cat > ${{ github.workspace }}/pmaports.cfg <<EOF
           [pmaports]
           version = 7
           pmbootstrap_min_version = 1.29.0
@@ -54,21 +53,19 @@ jobs:
           supported_root_filesystems = ext4,f2fs,btrfs
           EOF
           
-          # 3. Arreglar Git para que no se queje de remotes
-          cd "$APORTS_DIR"
+          # 3. Arreglar el remote de Git
+          cd ${{ github.workspace }}
           git remote set-url origin https://gitlab.postmarketos.org/postmarketOS/pmaports.git
           git fetch origin master --depth 1
           
-          # 4. EL TRUCO MAESTRO:
-          #   a) Usamos echo para responder a la pregunta del "Work path" (si aparece) y evitar el EOF.
-          #   b) NO ejecutamos 'init'. Usamos directamente 'install --config'.
-          #   c) Usamos '--details-to-stdout' (que SÍ existe en 3.11.1) para evitar timeouts.
-          echo "$WORK_DIR" | pmbootstrap --config "$CONFIG_FILE" install --no-fde --details-to-stdout
+          # 4. Ejecutar el init sin interacción. PMBOOTSTRAP_CI lo hará callar.
+          pmbootstrap init
           
-          # 5. Exportar los archivos generados
-          pmbootstrap --config "$CONFIG_FILE" export
+          # 5. Iniciar la compilación (ya no da errores de flag, está en modo CI)
+          pmbootstrap install --no-fde
+          pmbootstrap export
           
-          # 6. Mover los artefactos
+          # 6. Mover artefactos
           cp -rv /tmp/postmarketOS-export/* /tmp/out/ || true
           
       - name: Upload artifact

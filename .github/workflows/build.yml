@@ -29,39 +29,37 @@ jobs:
             pmos-toolbox \
             -c "
               echo '--- PASO 1: CONFIGURAR EL ENTORNO ---'
-              echo '[pmaports]' > /home/pmos/pmaports/pmaports.cfg
-              echo 'version = 7' >> /home/pmos/pmaports/pmaports.cfg
-              echo 'pmbootstrap_min_version = 1.29.0' >> /home/pmos/pmaports/pmaports.cfg
-              echo 'channel = edge' >> /home/pmos/pmaports/pmaports.cfg
+              echo '[pmaports]' > /home/pmos/pmaports/pmaports.cfg &&
+              echo 'version = 7' >> /home/pmos/pmaports/pmaports.cfg &&
+              echo 'pmbootstrap_min_version = 1.29.0' >> /home/pmos/pmaports/pmaports.cfg &&
+              echo 'channel = edge' >> /home/pmos/pmaports/pmaports.cfg &&
 
               echo '--- PASO 2: DESCARGAR E INSTALAR PMBOOTSTRAP ---'
-              git clone https://gitlab.postmarketos.org/postmarketOS/pmbootstrap.git /pmbootstrap_src
-              python3 -m venv /venv
-              /venv/bin/pip install /pmbootstrap_src
+              git clone https://gitlab.postmarketos.org/postmarketOS/pmbootstrap.git /pmbootstrap_src &&
+              python3 -m venv /venv &&
+              /venv/bin/pip install /pmbootstrap_src &&
 
               echo '--- PASO 3: PREPARAR LA CONFIGURACIÓN DEL DISPOSITIVO ---'
-              mkdir -p /home/pmos/.config/pmbootstrap
-              cat > /home/pmos/.config/pmbootstrap/pmbootstrap.cfg <<CFG_EOF
-              [pmbootstrap]
-              aports = /home/pmos/pmaports
-              work = /home/pmos/.local/var/pmbootstrap
-              device = gts7fewifi
-              channel = edge
-              ui = console
-              extra_space = 1500
-              CFG_EOF
+              mkdir -p /home/pmos/.config/pmbootstrap &&
+              echo '[pmbootstrap]' > /home/pmos/.config/pmbootstrap/pmbootstrap.cfg &&
+              echo 'aports = /home/pmos/pmaports' >> /home/pmos/.config/pmbootstrap/pmbootstrap.cfg &&
+              echo 'work = /home/pmos/.local/var/pmbootstrap' >> /home/pmos/.config/pmbootstrap/pmbootstrap.cfg &&
+              echo 'device = gts7fewifi' >> /home/pmos/.config/pmbootstrap/pmbootstrap.cfg &&
+              echo 'channel = edge' >> /home/pmos/.config/pmbootstrap/pmbootstrap.cfg &&
+              echo 'ui = console' >> /home/pmos/.config/pmbootstrap/pmbootstrap.cfg &&
+              echo 'extra_space = 1500' >> /home/pmos/.config/pmbootstrap/pmbootstrap.cfg &&
 
               echo '--- PASO 4: EL PASO DEL BOOTSTRAP (INIT) ---'
-              printf '/home/pmos/.local/var/pmbootstrap\nedge\nsamsung\ngts7fewifi\n' | /venv/bin/pmbootstrap --aports /home/pmos/pmaports init
+              printf '/home/pmos/.local/var/pmbootstrap\nedge\nsamsung\ngts7fewifi\n' | /venv/bin/pmbootstrap --aports /home/pmos/pmaports init &&
 
               echo '--- PASO 5: COMPILAR (INSTALL) ---'
-              /venv/bin/pmbootstrap --aports /home/pmos/pmaports install --no-fde --details-to-stdout
+              /venv/bin/pmbootstrap --aports /home/pmos/pmaports install --no-fde --details-to-stdout &&
 
               echo '--- PASO 6: EXPORTAR LA IMAGEN ---'
-              /venv/bin/pmbootstrap --aports /home/pmos/pmaports export
+              /venv/bin/pmbootstrap --aports /home/pmos/pmaports export &&
 
               echo '--- PASO 7: COPIAR ARTEFACTOS ---'
-              cp -rv /home/pmos/.local/var/pmbootstrap/cache_http/images/* /tmp/out/ || true
+              cp -rv /home/pmos/.local/var/pmbootstrap/cache_http/images/* /tmp/out/ || true &&
               cp -rv /tmp/postmarketOS-export/* /tmp/out/ || true
             "
 

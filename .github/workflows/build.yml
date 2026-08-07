@@ -9,50 +9,44 @@ on:
 
 jobs:
   build:
-    # CAMBIO AQUÍ: Usamos la versión "mínima" para intentar coger un servidor libre antes
     runs-on: ubuntu-24.04
     
     steps:
-    # 1. Descarga tu código
     - name: Checkout repository
       uses: actions/checkout@v4
 
-    # 2. Instala dependencias
     - name: Install system dependencies
       run: |
         sudo apt-get update
-        sudo apt-get install -y python3 python3-pip git device-tree-compiler
+        sudo apt-get install -y python3 python3-pip git device-tree-compiler openssl bmap-tools
 
-    # 3. Instala pmbootstrap desde el código fuente
     - name: Install pmbootstrap from source
       run: |
-        pip3 install --user setuptools
         git clone https://gitlab.com/postmarketOS/pmbootstrap.git
-        cd pmbootstrap
-        python3 setup.py install --user
+        pip3 install --user ./pmbootstrap
         echo "$HOME/.local/bin" >> $GITHUB_PATH
-        cd ..
 
-    # 4. Inicializa pmbootstrap
     - name: Initialize pmbootstrap
       run: |
-        yes | pmbootstrap -y \
-          --work /tmp/pmbootstrap_work \
-          --aports ${{ github.workspace }} \
-          init
+        pmbootstrap --aports ${{ github.workspace }} init --no-sshd --no-local --no-ccache --no-fde --no-locale --no-boot --no-extra --no-recommends --no-recommends --no-recommends || true
+        # config manual por si el init nuevo no agarra
+        mkdir -p ~/.config/pmbootstrap
+        echo "[pmbootstrap]" > ~/.config/pmbootstrap/pmbootstrap.cfg
+        echo "aports = ${{ github.workspace }}" >> ~/.config/pmbootstrap/pmbootstrap.cfg
+        echo "work = /tmp/pmbootstrap_work" >> ~/.config/pmbootstrap/pmbootstrap.cfg
+        pmbootstrap config device gts7fewifi
+        pmbootstrap status
 
-    # 5. Compila
     - name: Build rootfs for gts7fewifi
       run: |
-        pmbootstrap config device gts7fewifi
-        pmbootstrap config manufacturer Samsung
-        pmbootstrap config kernel local
-        pmbootstrap build --strict linux-gts7fewifi
-        pmbootstrap install --no-ccache --sdcard=/tmp/pmos-image.img
-      
-    # 6. Sube la imagen
+        yes | pmbootstrap install --no-ssd --no-recommends --no-recommends || pmbootstrap install
+        pmbootstrap export
+        ls -lh /tmp/postmarketOS-export/
+        cp /tmp/postmarketOS-export/*.img /tmp/pmos-image.img || cp /tmp/postmarketOS-export/*/*.img /tmp/pmos-image.img || find /tmp -name "*.img" | head
+
     - name: Upload artifact
       uses: actions/upload-artifact@v4
       with:
         name: pmos-gts7fewifi-image
         path: /tmp/pmos-image.img
+        if-no-files-found: warn

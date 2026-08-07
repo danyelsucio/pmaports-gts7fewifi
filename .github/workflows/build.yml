@@ -26,7 +26,7 @@ jobs:
         run: |
           mkdir -p /home/runner/.local/var/pmbootstrap/cache_git
           
-          # 1. Clonar el repo oficial usando la rama master (que sí existe en el remote)
+          # 1. Clonar el repo oficial usando la rama master
           git clone --branch master --depth 1 https://gitlab.postmarketos.org/postmarketOS/pmaports.git /home/runner/.local/var/pmbootstrap/cache_git/pmaports
           
           # 2. Copiar el contenido de TU repositorio (tu dispositivo gts7fewifi) al repositorio oficial.
@@ -41,28 +41,33 @@ jobs:
           supported_root_filesystems = ext4,f2fs,btrfs
           EOF
           
+          mkdir -p ~/.config/pmbootstrap
           mkdir -p /tmp/pmbootstrap_work
           mkdir -p /tmp/out
           
-      - name: Build (The Ultimate Final Piece)
+      - name: Create pmbootstrap config file
         run: |
-          # Ahora pmbootstrap encontrará 'origin/master' y el dispositivo gts7fewifi.
-          pmbootstrap \
-            -c aports=/home/runner/.local/var/pmbootstrap/cache_git/pmaports \
-            -c work=/tmp/pmbootstrap_work \
-            -c device=gts7fewifi \
-            -c channel=edge \
-            -c ui=console \
-            -c extra_space=1500 \
-            -c jobs=2 \
-            --details-to-stdout \
-            install --no-fde
+          # 4. EL TRUCO FINAL: Creamos el archivo de configuración en la ruta por defecto.
+          # Así pmbootstrap lo leerá sin necesidad de usar el flag '-c'.
+          cat > ~/.config/pmbootstrap/pmbootstrap.cfg <<EOF
+          [pmbootstrap]
+          aports = /home/runner/.local/var/pmbootstrap/cache_git/pmaports
+          work = /tmp/pmbootstrap_work
+          device = gts7fewifi
+          channel = edge
+          ui = console
+          extra_space = 1500
+          jobs = 2
+          EOF
+          
+      - name: Build (The Absolute Final Piece)
+        run: |
+          # Ahora pmbootstrap leerá la configuración del archivo y encontrará 'origin/master'.
+          # Usamos --details-to-stdout para evitar timeouts.
+          pmbootstrap --details-to-stdout install --no-fde
           
           # Exportar artefactos
-          pmbootstrap \
-            -c aports=/home/runner/.local/var/pmbootstrap/cache_git/pmaports \
-            -c work=/tmp/pmbootstrap_work \
-            export
+          pmbootstrap export
           
           cp -rv /tmp/postmarketOS-export/* /tmp/out/ || true
           

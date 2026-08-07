@@ -46,15 +46,21 @@ jobs:
           supported_root_filesystems = ext4,f2fs,btrfs
           EOF
           
-          # Simular que el init ya pasó
+          # Simular que el init ya pasó (para que no pregunte nada)
           touch ~/.config/pmbootstrap/pmbootstrap_init_done
           
-      - name: Build rootfs for gts7fewifi
-        env:
-          PMBOOTSTRAP_APORTS: ${{ github.workspace }}
+      - name: Create Symlink trick (Bypass the hardcoded path bug)
         run: |
-          # Usamos la variable de entorno para evitar errores de Git.
-          # Ahora pmbootstrap usará la carpeta local sin intentar hacer fetch.
+          # Borramos cualquier carpeta pmaports que exista en el caché por defecto
+          rm -rf /home/runner/.local/var/pmbootstrap/cache_git/pmaports
+          # Creamos la carpeta padre
+          mkdir -p /home/runner/.local/var/pmbootstrap/cache_git
+          # Creamos un enlace simbólico que apunte desde la ruta donde busca pmbootstrap, hacia nuestro código
+          ln -s ${{ github.workspace }} /home/runner/.local/var/pmbootstrap/cache_git/pmaports
+          
+      - name: Build rootfs for gts7fewifi
+        run: |
+          # Ahora pmbootstrap encontrará la carpeta en el symlink y no fallará
           pmbootstrap install --no-fde
           pmbootstrap export
           

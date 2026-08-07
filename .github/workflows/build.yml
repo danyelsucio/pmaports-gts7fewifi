@@ -1,52 +1,43 @@
 name: build
-
 on:
   push:
-    branches: [ "main", "master" ]
-  pull_request:
     branches: [ "main", "master" ]
   workflow_dispatch:
 
 jobs:
   build:
     runs-on: ubuntu-24.04
-    
     steps:
-    - name: Checkout repository
-      uses: actions/checkout@v4
+    - uses: actions/checkout@v4
 
     - name: Install system dependencies
       run: |
         sudo apt-get update
-        sudo apt-get install -y python3 python3-pip git device-tree-compiler openssl bmap-tools
+        sudo apt-get install -y python3-pip git openssl device-tree-compiler bmap-tools
 
     - name: Install pmbootstrap from source
       run: |
-        git clone https://gitlab.com/postmarketOS/pmbootstrap.git
-        pip3 install --user ./pmbootstrap
+        git clone https://gitlab.postmarketos.org/postmarketOS/pmbootstrap.git
+        pip3 install --user./pmbootstrap
         echo "$HOME/.local/bin" >> $GITHUB_PATH
 
     - name: Initialize pmbootstrap
       run: |
-        pmbootstrap --aports ${{ github.workspace }} init --no-sshd --no-local --no-ccache --no-fde --no-locale --no-boot --no-extra --no-recommends --no-recommends --no-recommends || true
-        # config manual por si el init nuevo no agarra
         mkdir -p ~/.config/pmbootstrap
-        echo "[pmbootstrap]" > ~/.config/pmbootstrap/pmbootstrap.cfg
-        echo "aports = ${{ github.workspace }}" >> ~/.config/pmbootstrap/pmbootstrap.cfg
-        echo "work = /tmp/pmbootstrap_work" >> ~/.config/pmbootstrap/pmbootstrap.cfg
-        pmbootstrap config device gts7fewifi
-        pmbootstrap status
+        echo -e "[pmbootstrap]\naports = ${{ github.workspace }}\nwork = /tmp/pmbootstrap_work\nis_default_channel = False" > ~/.config/pmbootstrap/pmbootstrap.cfg
+        pmbootstrap --aports ${{ github.workspace }} config device gts7fewifi
+        pmbootstrap --aports ${{ github.workspace }} status
 
     - name: Build rootfs for gts7fewifi
       run: |
-        yes | pmbootstrap install --no-ssd --no-recommends --no-recommends || pmbootstrap install
-        pmbootstrap export
-        ls -lh /tmp/postmarketOS-export/
-        cp /tmp/postmarketOS-export/*.img /tmp/pmos-image.img || cp /tmp/postmarketOS-export/*/*.img /tmp/pmos-image.img || find /tmp -name "*.img" | head
+        pmbootstrap --aports ${{ github.workspace }} install --no-fde --no-recommends --no-local --no-sshd --no-boot --no-extra || true
+        pmbootstrap --aports ${{ github.workspace }} export
+        find /tmp/postmarketOS-export -type f | head -n 100
+        mkdir -p /tmp/out
+        cp -r /tmp/postmarketOS-export/* /tmp/out/ || true
 
     - name: Upload artifact
       uses: actions/upload-artifact@v4
       with:
         name: pmos-gts7fewifi-image
-        path: /tmp/pmos-image.img
-        if-no-files-found: warn
+        path: /tmp/out/

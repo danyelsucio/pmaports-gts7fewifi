@@ -1,4 +1,4 @@
-name: Manual Build Process (Ultimate Git Fix v7)
+name: Manual Build Process (KO Técnico)
 on:
   push:
     branches: ["main", "master"]
@@ -40,9 +40,6 @@ jobs:
             --security-opt apparmor:unconfined \
             pmos-toolbox \
             -c "
-              # 0. ELIMINAR LA CACHÉ DE PMBOOTSTRAP QUE CAUSA EL ERROR DE MIGRACIÓN
-              rm -rf /home/pmos/.local/var/pmbootstrap &&
-
               # 1. CREAR EL USUARIO Y PERMISOS
               mkdir -p /build &&
               chmod 777 /build &&
@@ -51,21 +48,22 @@ jobs:
               chown -R pmos:pmos /tmp/out &&
               chown -R pmos:pmos /build &&
 
-              # 2. CREAR UN CLON LIMPIO DEL REPOSITORIO OFICIAL Y DARLE PERMISOS
+              # 2. CLONAR EL REPO OFICIAL Y DAR PERMISOS
               git clone https://gitlab.postmarketos.org/postmarketOS/pmaports.git /home/pmos/pmaports_clean &&
               chown -R pmos:pmos /home/pmos/pmaports_clean &&
-              
-              # HACER UN ENLACE SIMBÓLICO DE TU CARPETA (CON EL DISPOSITIVO)
               ln -s /home/pmos/mi_repo /home/pmos/pmaports_clean/pmaports-gts7fewifi &&
 
-              # 3. CREAR EL ARCHIVO pmaports.cfg EN LA RAÍZ DEL CLON LIMPIO
+              # 3. CREAR pmaports.cfg EN EL CLON
               echo '[pmaports]' > /home/pmos/pmaports_clean/pmaports.cfg &&
               echo 'version = 7' >> /home/pmos/pmaports_clean/pmaports.cfg &&
               echo 'pmbootstrap_min_version = 1.29.0' >> /home/pmos/pmaports_clean/pmaports.cfg &&
               echo 'channel = edge' >> /home/pmos/pmaports_clean/pmaports.cfg &&
 
-              # 4. PREPARAR EL ARCHIVO DE CONFIGURACIÓN
+              # 4. EJECUTAR TODO COMO pmos (INCLUYENDO EL BORRADO DE LA CACHÉ)
               sudo -u pmos bash -c \"
+                # LIMPIEZA DE CACHÉ (Ahora pmos puede borrarla sin bloqueos)
+                rm -rf /home/pmos/.local/var/pmbootstrap;
+
                 mkdir -p /build/.config/pmbootstrap;
                 echo '[pmbootstrap]' > /build/.config/pmbootstrap/pmbootstrap.cfg;
                 echo 'aports = /home/pmos/pmaports_clean' >> /build/.config/pmbootstrap/pmbootstrap.cfg;
@@ -75,14 +73,14 @@ jobs:
                 echo 'ui = console' >> /build/.config/pmbootstrap/pmbootstrap.cfg;
                 echo 'extra_space = 1500' >> /build/.config/pmbootstrap/pmbootstrap.cfg;
 
-                # 5. EJECUTAMOS EL INSTALL
+                # INSTALACIÓN
                 /pmbootstrap/venv/bin/pmbootstrap --config /build/.config/pmbootstrap/pmbootstrap.cfg install --no-fde;
 
-                # 6. EXPORTAR LA IMAGEN
+                # EXPORTACIÓN
                 /pmbootstrap/venv/bin/pmbootstrap --config /build/.config/pmbootstrap/pmbootstrap.cfg export;
               \"
 
-              # 7. COPIAR LOS ARTEFACTOS
+              # 5. COPIAR ARTEFACTOS
               cp -rv /home/pmos/.local/var/pmbootstrap/cache_http/images/* /tmp/out/ || true;
               cp -rv /tmp/postmarketOS-export/* /tmp/out/ || true;
             "

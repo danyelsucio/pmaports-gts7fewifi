@@ -34,14 +34,14 @@ jobs:
             --entrypoint bash \
             --user root \
             -v ${{ github.workspace }}:/home/pmos/mi_repo \
-            -v /tmp/pmbootstrap_work:/home/pmos/work_dir_clean \
+            -v /tmp/pmbootstrap_work:/home/pmos/work_dir_fresh \
             -v /tmp/out:/tmp/out \
             --device /dev/fuse \
             --cap-add SYS_ADMIN \
             --security-opt apparmor:unconfined \
             pmos-toolbox \
             -c "
-              # 1. CREAR CARPETA HOME DEL USUARIO COMO ROOT (AQUÍ SE ARREGLA EL PERMISO)
+              # 1. CREAR CARPETA HOME DEL USUARIO COMO ROOT
               mkdir -p /home/pmos &&
               chown 1000:1000 /home/pmos &&
 
@@ -52,7 +52,7 @@ jobs:
               echo 'pmos ALL=(ALL) NOPASSWD:ALL' >> /etc/sudoers &&
               chown -R pmos:pmos /tmp/out &&
               chown -R pmos:pmos /build &&
-              chown -R pmos:pmos /home/pmos/work_dir_clean &&
+              chown -R pmos:pmos /home/pmos/work_dir_fresh &&
 
               # 3. CLONAR EL REPO OFICIAL
               git clone https://gitlab.postmarketos.org/postmarketOS/pmaports.git /home/pmos/pmaports_clean &&
@@ -70,7 +70,7 @@ jobs:
                 mkdir -p /build/.config/pmbootstrap;
                 echo '[pmbootstrap]' > /build/.config/pmbootstrap/pmbootstrap.cfg;
                 echo 'aports = /home/pmos/pmaports_clean' >> /build/.config/pmbootstrap/pmbootstrap.cfg;
-                echo 'work = /home/pmos/work_dir_clean' >> /build/.config/pmbootstrap/pmbootstrap.cfg;
+                echo 'work = /home/pmos/work_dir_fresh' >> /build/.config/pmbootstrap/pmbootstrap.cfg;
                 echo 'device = gts7fewifi' >> /build/.config/pmbootstrap/pmbootstrap.cfg;
                 echo 'channel = edge' >> /build/.config/pmbootstrap/pmbootstrap.cfg;
                 echo 'ui = console' >> /build/.config/pmbootstrap/pmbootstrap.cfg;
@@ -84,7 +84,7 @@ jobs:
               \"
 
               # 8. COPIAR ARTEFACTOS
-              cp -rv /home/pmos/work_dir_clean/cache_http/images/* /tmp/out/ || true;
+              cp -rv /home/pmos/work_dir_fresh/cache_http/images/* /tmp/out/ || true;
               cp -rv /tmp/postmarketOS-export/* /tmp/out/ || true;
             "
 

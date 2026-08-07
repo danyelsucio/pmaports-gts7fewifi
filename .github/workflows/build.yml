@@ -1,4 +1,4 @@
-name: Manual Build Process (Ultimate Git Fix v6)
+name: Manual Build Process (Ultimate Git Fix v7)
 on:
   push:
     branches: ["main", "master"]
@@ -49,9 +49,11 @@ jobs:
               chown -R pmos:pmos /tmp/out &&
               chown -R pmos:pmos /build &&
 
-              # 2. CREAR UN CLON LIMPIO DEL REPOSITORIO OFICIAL
+              # 2. CREAR UN CLON LIMPIO DEL REPOSITORIO OFICIAL Y DARLE PERMISOS
               git clone https://gitlab.postmarketos.org/postmarketOS/pmaports.git /home/pmos/pmaports_clean &&
-              # HACER UN ENLACE SIMBÓLICO DE TU CARPETA (CON EL DISPOSITIVO) DENTRO DEL CLON LIMPIO
+              chown -R pmos:pmos /home/pmos/pmaports_clean &&
+              
+              # HACER UN ENLACE SIMBÓLICO DE TU CARPETA (CON EL DISPOSITIVO)
               ln -s /home/pmos/mi_repo /home/pmos/pmaports_clean/pmaports-gts7fewifi &&
 
               # 3. CREAR EL ARCHIVO pmaports.cfg EN LA RAÍZ DEL CLON LIMPIO

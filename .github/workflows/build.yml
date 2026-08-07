@@ -1,4 +1,4 @@
-name: Manual Build Process (Symlink Fix v2)
+name: Manual Build Process (Ultimate Git Fix)
 on:
   push:
     branches: ["main", "master"]
@@ -49,24 +49,25 @@ jobs:
               chown -R pmos:pmos /tmp/out &&
               chown -R pmos:pmos /build &&
 
-              # 2. EL TRUCO DEL SIGLO (SIN BORRAR LA CARPETA MONTADA)
-              # Clonamos el repo oficial en un lugar nuevo y creamos un symlink
-              git clone https://gitlab.postmarketos.org/postmarketOS/pmaports.git /home/pmos/real_pmaports &&
-              ln -s /home/pmos/real_pmaports /home/pmos/pmaports_link &&
+              # 2. EL TRUCO DEFINITIVO: 
+              # Movemos la carpeta montada a otro lado, clonamos el repo oficial en su lugar,
+              # y copiamos TU dispositivo (gts7fewifi) dentro del repo oficial.
+              mv /home/pmos/pmaports /home/pmos/mi_repo &&
+              git clone https://gitlab.postmarketos.org/postmarketOS/pmaports.git /home/pmos/pmaports &&
+              cp -rf /home/pmos/mi_repo/* /home/pmos/pmaports/ &&
 
-              # 3. PREPARAR EL ARCHIVO DE CONFIGURACIÓN (APUNTANDO AL SYMLINK)
+              # 3. PREPARAR EL ARCHIVO DE CONFIGURACIÓN
               sudo -u pmos bash -c \"
                 mkdir -p /build/.config/pmbootstrap;
                 echo '[pmbootstrap]' > /build/.config/pmbootstrap/pmbootstrap.cfg;
-                # AQUÍ CAMBIA LA RUTA: Apuntamos a pmaports_link, no a pmaports
-                echo 'aports = /home/pmos/pmaports_link' >> /build/.config/pmbootstrap/pmbootstrap.cfg;
+                echo 'aports = /home/pmos/pmaports' >> /build/.config/pmbootstrap/pmbootstrap.cfg;
                 echo 'work = /home/pmos/.local/var/pmbootstrap' >> /build/.config/pmbootstrap/pmbootstrap.cfg;
                 echo 'device = gts7fewifi' >> /build/.config/pmbootstrap/pmbootstrap.cfg;
                 echo 'channel = edge' >> /build/.config/pmbootstrap/pmbootstrap.cfg;
                 echo 'ui = console' >> /build/.config/pmbootstrap/pmbootstrap.cfg;
                 echo 'extra_space = 1500' >> /build/.config/pmbootstrap/pmbootstrap.cfg;
 
-                # 4. EL TRUCO FINAL: Usamos --config para saltarnos el init
+                # 4. EJECUTAMOS EL INSTALL
                 /pmbootstrap/venv/bin/pmbootstrap --config /build/.config/pmbootstrap/pmbootstrap.cfg install --no-fde;
 
                 # 5. EXPORTAR LA IMAGEN

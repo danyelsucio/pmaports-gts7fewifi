@@ -19,36 +19,19 @@ jobs:
           python3 -m venv venv
           source venv/bin/activate
           
-          # Instalamos la versión exacta que pide pmaports (3.9.0)
+          # Instalamos la versión 3.9.0
           pip install "git+https://gitlab.postmarketos.org/postmarketOS/pmbootstrap.git@3.9.0"
           echo "$PWD/venv/bin" >> $GITHUB_PATH
           
-      - name: Configure and build (Skipping broken 'init' entirely)
+      - name: Build (Skipping all config and Git validation)
+        env:
+          # ESTA VARIABLE ES LA CLAVE. Obliga a pmbootstrap a saltarse la comprobación de Git en 3.9.0.
+          PMBOOTSTRAP_SKIP_GIT_REQUIREMENT: "1"
         run: |
-          mkdir -p ~/.config/pmbootstrap
           mkdir -p /tmp/pmbootstrap_work
           mkdir -p /tmp/out
-          mkdir -p /tmp/git_pmaports
           
-          # 1. Clonar el repositorio oficial de pmaports
-          git clone --depth 1 https://gitlab.postmarketos.org/postmarketOS/pmaports.git /tmp/git_pmaports
-          
-          # 2. Crear el enlace simbólico necesario
-          ln -s /tmp/git_pmaports ${{ github.workspace }}/pmaports
-          
-          # 3. Crear el archivo de configuración
-          cat > ~/.config/pmbootstrap/pmbootstrap.cfg <<EOF
-          [pmbootstrap]
-          aports = ${{ github.workspace }}/pmaports
-          work = /tmp/pmbootstrap_work
-          device = gts7fewifi
-          channel = edge
-          ui = console
-          extra_space = 1500
-          jobs = 2
-          EOF
-          
-          # 4. Crear pmaports.cfg (ya no dará error de versión porque tenemos la 3.9.0)
+          # 1. Crear pmaports.cfg en la raíz del workspace
           cat > ${{ github.workspace }}/pmaports.cfg <<EOF
           [pmaports]
           version = 7
@@ -57,12 +40,27 @@ jobs:
           supported_root_filesystems = ext4,f2fs,btrfs
           EOF
           
-          # 5. EL TRUCO FINAL: Usamos --config y nos saltamos el 'init'.
-          # La versión 3.9.0 tiene el flag --details-to-stdout
-          pmbootstrap --config ~/.config/pmbootstrap/pmbootstrap.cfg --details-to-stdout install --no-fde
+          # 2. TRUCO DEFINITIVO: Usamos el flag '-c' para pasar configuraciones por comando.
+          # Esto hace que pmbootstrap NUNCA intente leer el archivo ni preguntar nada.
+          # Además activamos --details-to-stdout para evitar timeouts.
+          pmbootstrap \
+            -c aports=${{ github.workspace }} \
+            -c work=/tmp/pmbootstrap_work \
+            -c device=gts7fewifi \
+            -c channel=edge \
+            -c ui=console \
+            -c extra_space=1500 \
+            -c jobs=2 \
+            --details-to-stdout \
+            install --no-fde
           
-          # 6. Exportar los artefactos
-          pmbootstrap --config ~/.config/pmbootstrap/pmbootstrap.cfg export
+          # 3. Exportar artefactos
+          pmbootstrap \
+            -c aports=${{ github.workspace }} \
+            -c work=/tmp/pmbootstrap_work \
+            export
+          
+          # 4. Copiar artefactos
           cp -rv /tmp/postmarketOS-export/* /tmp/out/ || true
           
       - name: Upload artifact

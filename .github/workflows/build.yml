@@ -1,4 +1,4 @@
-name: Manual Build Process (The Absolute End)
+name: Manual Build Process (Cache Killer)
 on:
   push:
     branches: ["main", "master"]
@@ -30,8 +30,9 @@ jobs:
           mkdir -p /tmp/pmbootstrap_work
           mkdir -p /tmp/out
           
-          # NOMBRE DE CARPETA ALEATORIO (NUNCA SE REPITE)
-          WORK_DIR="/home/pmos/work_dir_$(date +%s)"
+          # GENERAMOS UNA RUTA BASE COMPLETAMENTE ÚNICA
+          UNIQUE_BASE="/work_base_$(date +%s)"
+          WORK_DIR="${UNIQUE_BASE}/pmos_work"
           
           docker run --rm -t \
             --entrypoint bash \
@@ -44,9 +45,8 @@ jobs:
             --security-opt apparmor:unconfined \
             pmos-toolbox \
             -c "
-              # 1. CREAR CARPETA HOME DEL USUARIO COMO ROOT
-              mkdir -p /home/pmos &&
-              chown 1000:1000 /home/pmos &&
+              # 1. CREAR LA BASE ÚNICA (NO EN /HOME/PMOS)
+              mkdir -p ${UNIQUE_BASE} && chown 1000:1000 ${UNIQUE_BASE} &&
 
               # 2. CREAR EL USUARIO Y PERMISOS
               mkdir -p /build &&
@@ -55,7 +55,7 @@ jobs:
               echo 'pmos ALL=(ALL) NOPASSWD:ALL' >> /etc/sudoers &&
               chown -R pmos:pmos /tmp/out &&
               chown -R pmos:pmos /build &&
-              chown -R pmos:pmos ${WORK_DIR} &&
+              chown -R pmos:pmos ${UNIQUE_BASE} &&
 
               # 3. CLONAR EL REPO OFICIAL
               git clone https://gitlab.postmarketos.org/postmarketOS/pmaports.git /home/pmos/pmaports_clean &&

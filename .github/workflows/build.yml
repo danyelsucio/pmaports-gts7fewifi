@@ -1,4 +1,4 @@
-name: Manual Build Process (Tmp Work Dir)
+name: Manual Build Process (Final Fix + Work Dir)
 on:
   push:
     branches: ["main", "master"]
@@ -39,7 +39,7 @@ jobs:
             --security-opt apparmor:unconfined \
             pmos-toolbox \
             -c "
-              # 1. CREAR EL USUARIO (su home sigue siendo /build, pero el trabajo será en /tmp)
+              # 1. CREAR EL USUARIO
               useradd -m -d /build -s /bin/bash pmos &&
               echo 'pmos ALL=(ALL) NOPASSWD:ALL' >> /etc/sudoers &&
               chown -R pmos:pmos /build &&
@@ -49,19 +49,17 @@ jobs:
               chown -R pmos:pmos /home/pmos/pmaports_clean &&
               ln -s /home/pmos/mi_repo /home/pmos/pmaports_clean/pmaports-gts7fewifi &&
 
-              # 3. ARCHIVO DE CONFIGURACIÓN EN AMBAS RUTAS
+              # 3. ARCHIVO DE CONFIGURACIÓN DE PMAPORTS
               echo '[pmaports]' > /home/pmos/pmaports_clean/pmaports.cfg &&
               echo 'version = 7' >> /home/pmos/pmaports_clean/pmaports.cfg &&
               echo 'pmbootstrap_min_version = 1.29.0' >> /home/pmos/pmaports_clean/pmaports.cfg &&
               echo 'channel = edge' >> /home/pmos/pmaports_clean/pmaports.cfg &&
-              mkdir -p /work/y &&
-              cp /home/pmos/pmaports_clean/pmaports.cfg /work/y/pmaports.cfg &&
 
               # 4. EL TRUCO DEFINITIVO: Usar --work /tmp/pmos_work
               sudo -u pmos bash -c \"
                 yes | /pmbootstrap/venv/bin/pmbootstrap --work /tmp/pmos_work init &&
-                /pmbootstrap/venv/bin/pmbootstrap --aports /home/pmos/pmaports_clean --work /tmp/pmos_work install --no-fde &&
-                /pmbootstrap/venv/bin/pmbootstrap --aports /home/pmos/pmaports_clean --work /tmp/pmos_work export
+                /pmbootstrap/venv/bin/pmbootstrap --work /tmp/pmos_work --aports /home/pmos/pmaports_clean install --no-fde &&
+                /pmbootstrap/venv/bin/pmbootstrap --work /tmp/pmos_work --aports /home/pmos/pmaports_clean export
               \"
 
               # 5. COPIAR ARTEFACTOS

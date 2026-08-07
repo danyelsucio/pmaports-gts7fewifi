@@ -1,7 +1,11 @@
-FROM ubuntu:latest
-RUN apt-get update && apt-get install -y python3 python3-venv git openssl device-tree-compiler bmap-tools
-RUN git clone https://gitlab.postmarketos.org/postmarketOS/pmbootstrap.git /pmbootstrap
-RUN python3 -m venv /pmbootstrap/venv
-RUN /pmbootstrap/venv/bin/pip install --upgrade pip && /pmbootstrap/venv/bin/pip install /pmbootstrap
-WORKDIR /work
-ENTRYPOINT ["/pmbootstrap/venv/bin/pmbootstrap"]
+# Usamos Ubuntu 22.04 porque es estable y no tiene los problemas de Python 3.14
+FROM ubuntu:22.04
+
+# Instalamos las herramientas básicas que necesitaremos
+RUN apt-get update && apt-get install -y \
+    python3 python3-pip python3-venv \
+    git openssl device-tree-compiler bmap-tools \
+    curl wget sudo
+
+# El punto de entrada será bash, para poder ejecutar comandos manualmente
+CMD ["/bin/bash"]

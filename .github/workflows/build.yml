@@ -18,7 +18,7 @@ jobs:
     - name: Install pmbootstrap from source
       run: |
         git clone https://gitlab.postmarketos.org/postmarketOS/pmbootstrap.git
-        pip3 install --user./pmbootstrap
+        pip3 install --user ./pmbootstrap
         echo "$HOME/.local/bin" >> $GITHUB_PATH
 
     - name: Create configs manually

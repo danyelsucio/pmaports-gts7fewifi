@@ -14,30 +14,25 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y python3-pip git openssl device-tree-compiler bmap-tools
           
-      - name: Install pmbootstrap from source
+      - name: Install pmbootstrap (stable version 2.x)
         run: |
-          git clone https://gitlab.postmarketos.org/postmarketOS/pmbootstrap.git
-          pip3 install --user ./pmbootstrap
+          # Instalamos la versión estable desde PyPI en lugar de clonar la 3.x (que es inestable en CI)
+          pip3 install pmbootstrap
           echo "$HOME/.local/bin" >> $GITHUB_PATH
           
-      - name: Config setup and create pmaports.cfg
+      - name: Manual config setup (Compatible con v2.x)
         run: |
           mkdir -p ~/.config/pmbootstrap
           mkdir -p /tmp/pmbootstrap_work
           
-          # Crear el archivo de configuración de pmbootstrap
-          cat > ~/.config/pmbootstrap/pmbootstrap.cfg <<EOF
+          # Configuración manual que la versión 2.x entiende perfectamente
+          cat > ~/.config/pmbootstrap.cfg <<EOF
           [pmbootstrap]
           aports = ${{ github.workspace }}
           work = /tmp/pmbootstrap_work
-          device = gts7fewifi
-          channel = edge
-          ui = console
-          extra_space = 0
-          jobs = 2
           EOF
           
-          # Crear el archivo pmaports.cfg OBLIGATORIO en la raíz
+          # Crear el archivo pmaports.cfg OBLIGATORIO
           cat > ${{ github.workspace }}/pmaports.cfg <<EOF
           [pmaports]
           version = 7
@@ -46,21 +41,10 @@ jobs:
           supported_root_filesystems = ext4,f2fs,btrfs
           EOF
           
-          # Simular que el init ya pasó (para que no pregunte nada)
-          touch ~/.config/pmbootstrap/pmbootstrap_init_done
-          
-      - name: Create Symlink trick (Bypass the hardcoded path bug)
-        run: |
-          # Borramos cualquier carpeta pmaports que exista en el caché por defecto
-          rm -rf /home/runner/.local/var/pmbootstrap/cache_git/pmaports
-          # Creamos la carpeta padre
-          mkdir -p /home/runner/.local/var/pmbootstrap/cache_git
-          # Creamos un enlace simbólico que apunte desde la ruta donde busca pmbootstrap, hacia nuestro código
-          ln -s ${{ github.workspace }} /home/runner/.local/var/pmbootstrap/cache_git/pmaports
-          
       - name: Build rootfs for gts7fewifi
         run: |
-          # Ahora pmbootstrap encontrará la carpeta en el symlink y no fallará
+          # En v2.x, esto es suficiente y NO tiene el error de Git
+          pmbootstrap init
           pmbootstrap install --no-fde
           pmbootstrap export
           

@@ -14,18 +14,19 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y python3-pip git openssl device-tree-compiler bmap-tools
           
-      - name: Install pmbootstrap v3.2.0 (Latest stable tag)
+      - name: Install pmbootstrap v3.1.0 (CI Friendly)
         run: |
-          git clone https://gitlab.postmarketos.org/postmarketOS/pmbootstrap.git -b 3.2.0 --depth 1
+          # Instalamos la 3.1.0 que NO tiene el bug del EOF y acepta el archivo de "init_done"
+          git clone https://gitlab.postmarketos.org/postmarketOS/pmbootstrap.git -b 3.1.0 --depth 1
           pip3 install --user ./pmbootstrap
           echo "$HOME/.local/bin" >> $GITHUB_PATH
           
-      - name: Pre-configure pmbootstrap (Fix Git remote and create files)
+      - name: Configure pmbootstrap (3.1.0 compatible)
         run: |
           mkdir -p ~/.config/pmbootstrap
           mkdir -p /tmp/pmbootstrap_work
           
-          # 1. Configuración principal
+          # Configuración principal
           cat > ~/.config/pmbootstrap/pmbootstrap.cfg <<EOF
           [pmbootstrap]
           aports = ${{ github.workspace }}
@@ -37,7 +38,7 @@ jobs:
           jobs = 2
           EOF
           
-          # 2. Archivo pmaports.cfg obligatorio
+          # pmaports.cfg obligatorio
           cat > ${{ github.workspace }}/pmaports.cfg <<EOF
           [pmaports]
           version = 7
@@ -46,18 +47,18 @@ jobs:
           supported_root_filesystems = ext4,f2fs,btrfs
           EOF
           
-          # 3. Arreglar el Git remote y traer channels.cfg
+          # Arreglar Git y descargar channels.cfg
           cd ${{ github.workspace }}
           git remote set-url origin https://gitlab.postmarketos.org/postmarketOS/pmaports.git
           git fetch origin master --depth 1
           
+          # ESTE ARCHIVO SÍ FUNCIONA EN LA 3.1.0
+          touch ~/.config/pmbootstrap/pmbootstrap_init_done
+          
       - name: Build rootfs for gts7fewifi
         run: |
-          # TRUCO FINAL: Ejecutamos 'init' primero.
-          # Como ya tenemos el archivo .cfg creado, simplemente dirá "Config is up to date" y continuará.
+          # Con la 3.1.0 y el archivo creado, esto NO preguntará nada y pasará directo al build.
           pmbootstrap init
-          
-          # Ahora sí, el install usará la configuración que ya creamos
           pmbootstrap install --no-fde
           pmbootstrap export
           

@@ -18,6 +18,8 @@ jobs:
           mkdir -p /tmp/pmbootstrap_work
           mkdir -p /tmp/out
           
+          # EL TRUCO DEFINITIVO: Entramos al contenedor directamente con 'bash'
+          # y luego ejecutamos todo el script.
           docker run --rm -t \
             -v ${{ github.workspace }}:/home/pmos/pmaports \
             -v /tmp/pmbootstrap_work:/home/pmos/.local/var/pmbootstrap \
@@ -25,7 +27,7 @@ jobs:
             --cap-add SYS_ADMIN \
             --security-opt apparmor:unconfined \
             pmbootstrap-local \
-            /bin/bash -c "
+            bash -c "
               echo '[pmaports]' > /home/pmos/pmaports/pmaports.cfg &&
               echo 'version = 7' >> /home/pmos/pmaports/pmaports.cfg &&
               echo 'pmbootstrap_min_version = 1.29.0' >> /home/pmos/pmaports/pmaports.cfg &&

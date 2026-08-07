@@ -25,7 +25,7 @@ jobs:
           mkdir -p ~/.config/pmbootstrap
           mkdir -p /tmp/pmbootstrap_work
           
-          # Configuración principal
+          # Configuración principal con EXTRA_SPACE añadido
           cat > ~/.config/pmbootstrap/pmbootstrap.cfg <<EOF
           [pmbootstrap]
           aports = ${{ github.workspace }}
@@ -33,7 +33,7 @@ jobs:
           device = gts7fewifi
           channel = edge
           ui = console
-          extra_space = 0
+          extra_space = 1500
           jobs = 2
           EOF
           
@@ -53,12 +53,11 @@ jobs:
           
       - name: Build rootfs for gts7fewifi
         run: |
-          # EL TRUCO FINAL: Usamos '--aports' DENTRO del init.
-          # Esto evita que pmbootstrap busque la ruta por defecto.
+          # Usamos --aports en init y --details-to-stdout en el install para evitar timeouts de GitHub
           pmbootstrap --aports ${{ github.workspace }} init
           
-          # Ahora ya podemos ejecutar el install con normalidad
-          pmbootstrap install --no-fde
+          # Añadimos --details-to-stdout para que el log no se detenga y no falle por timeout
+          pmbootstrap --aports ${{ github.workspace }} install --no-fde --details-to-stdout
           pmbootstrap export
           
           mkdir -p /tmp/out

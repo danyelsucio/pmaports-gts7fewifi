@@ -1,4 +1,4 @@
-name: Manual Build Process (The printf Method)
+name: Manual Build Process (The Final Symlink)
 on:
   push:
     branches: ["main", "master"]
@@ -39,6 +39,10 @@ jobs:
             --security-opt apparmor:unconfined \
             pmos-toolbox \
             -c "
+              # 0. CREAMOS LA CARPETA /work PARA ENGAÑAR AL BUG DE 3.11.1
+              mkdir -p /work &&
+              chmod 777 /work &&
+
               # 1. CREAR EL USUARIO Y PERMISOS
               mkdir -p /build &&
               chmod 777 /build &&
@@ -60,14 +64,10 @@ jobs:
 
               # 4. EL MÉTODO DEL PRINTF (Inyectar respuestas en el stdin)
               sudo -u pmos bash -c \"
-                # Establecemos las variables de entorno (por si acaso)
-                export PMBOOTSTRAP_APORTS=/home/pmos/pmaports_clean
-                export PMBOOTSTRAP_WORK=/tmp/pmos_work
-
                 # CREAMOS LA CARPETA DE TRABAJO
                 mkdir -p /tmp/pmos_work
 
-                # INYECTAMOS LAS RESPUESTAS EN EL INIT (Simulamos un humano)
+                # INYECTAMOS LAS RESPUESTAS EN EL INIT
                 printf '/tmp/pmos_work\nedge\nsamsung\ngts7fewifi\n' | /pmbootstrap/venv/bin/pmbootstrap init
 
                 # 5. INSTALACIÓN

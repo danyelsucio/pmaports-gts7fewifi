@@ -1,4 +1,4 @@
-name: Manual Build Process (The sed Trick)
+name: Manual Build Process (The yes Method)
 on:
   push:
     branches: ["main", "master"]
@@ -39,9 +39,6 @@ jobs:
             --security-opt apparmor:unconfined \
             pmos-toolbox \
             -c "
-              # 0. EL TRUCO MAESTRO: BORRAR CUALQUIER RESTO DE VERSIÓN
-              rm -rf /tmp/pmos_work &&
-
               # 1. PREPARACIÓN DEL ENTORNO
               mkdir -p /work && chmod 777 /work &&
               mkdir -p /build && chmod 777 /build &&
@@ -60,27 +57,14 @@ jobs:
               echo 'pmbootstrap_min_version = 1.29.0' >> /home/pmos/pmaports_clean/pmaports.cfg &&
               echo 'channel = edge' >> /home/pmos/pmaports_clean/pmaports.cfg &&
 
-              # 4. LA CLAVE: CREAR LA CARPETA DE TRABAJO Y LUEGO FORZAR LA VERSIÓN CON sed
+              # 4. EL TRUCO DEFINITIVO: yes | pmbootstrap init
               sudo -u pmos bash -c \"
-                mkdir -p /tmp/pmos_work &&
-                chown -R pmos:pmos /tmp/pmos_work &&
-                echo '8' > /tmp/pmos_work/.version &&
-
-                mkdir -p /build/.config/pmbootstrap &&
-                echo '[pmbootstrap]' > /build/.config/pmbootstrap/pmbootstrap.cfg &&
-                echo 'aports = /home/pmos/pmaports_clean' >> /build/.config/pmbootstrap/pmbootstrap.cfg &&
-                echo 'work = /tmp/pmos_work' >> /build/.config/pmbootstrap/pmbootstrap.cfg &&
-                echo 'device = gts7fewifi' >> /build/.config/pmbootstrap/pmbootstrap.cfg &&
-                echo 'channel = edge' >> /build/.config/pmbootstrap/pmbootstrap.cfg &&
-                echo 'ui = console' >> /build/.config/pmbootstrap/pmbootstrap.cfg &&
-                echo 'extra_space = 1500' >> /build/.config/pmbootstrap/pmbootstrap.cfg &&
-
-                # 5. INSTALACIÓN
-                /pmbootstrap/venv/bin/pmbootstrap --config /build/.config/pmbootstrap/pmbootstrap.cfg install --no-fde &&
-                /pmbootstrap/venv/bin/pmbootstrap --config /build/.config/pmbootstrap/pmbootstrap.cfg export
+                yes | /pmbootstrap/venv/bin/pmbootstrap init &&
+                /pmbootstrap/venv/bin/pmbootstrap install --no-fde &&
+                /pmbootstrap/venv/bin/pmbootstrap export
               \"
 
-              # 6. COPIAR ARTEFACTOS
-              cp -rv /tmp/pmos_work/cache_http/images/* /tmp/out/ || true;
+              # 5. COPIAR ARTEFACTOS
+              cp -rv /home/pmos/.local/var/pmbootstrap/cache_http/images/* /tmp/out/ || true;
               cp -rv /tmp/postmarketOS-export/* /tmp/out/ || true;
             "

@@ -1,4 +1,4 @@
-name: Manual Build Process (Root Created Tmp)
+name: Manual Build Process (Mounted Tmp)
 on:
   push:
     branches: ["main", "master"]
@@ -28,15 +28,14 @@ jobs:
       - name: Execute the Ultimate Build Step
         run: |
           mkdir -p /tmp/out
-          # CREAMOS LA CARPETA DE TRABAJO EN /tmp COMO ROOT (ANTES DE CREAR EL USUARIO)
           mkdir -p /tmp/pmos_work
-          chmod 777 /tmp/pmos_work
           
           docker run --rm -t \
             --entrypoint bash \
             --user root \
             -v ${{ github.workspace }}:/home/pmos/mi_repo \
             -v /tmp/out:/tmp/out \
+            -v /tmp/pmos_work:/tmp/pmos_work \
             --device /dev/fuse \
             --cap-add SYS_ADMIN \
             --security-opt apparmor:unconfined \

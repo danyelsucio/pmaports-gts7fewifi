@@ -16,7 +16,6 @@ jobs:
           
       - name: Install pmbootstrap v3.4.0 (Latest stable)
         run: |
-          # Clonamos la versión estable 3.4.0 (que ya tiene todos los flags arreglados)
           git clone https://gitlab.postmarketos.org/postmarketOS/pmbootstrap.git -b 3.4.0 --depth 1
           pip3 install --user ./pmbootstrap
           echo "$HOME/.local/bin" >> $GITHUB_PATH
@@ -52,10 +51,10 @@ jobs:
           git remote set-url origin https://gitlab.postmarketos.org/postmarketOS/pmaports.git
           git fetch origin master --depth 1
           
-          # 4. Ejecutar init con --yes (ahora SÍ funciona en v3.4.0)
-          pmbootstrap --aports ${{ github.workspace }} init --yes
+          # 4. Ejecutar init (SIN el --yes, ya que no existe). Como ya tenemos el archivo .cfg, NO preguntará nada.
+          pmbootstrap --aports ${{ github.workspace }} init
           
-          # 5. Compilar con --details-to-stdout (ahora SÍ funciona)
+          # 5. Compilar. El flag --details-to-stdout SÍ funciona en la v3.4.0
           pmbootstrap --aports ${{ github.workspace }} install --no-fde --details-to-stdout
           pmbootstrap export
           

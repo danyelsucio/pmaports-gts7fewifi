@@ -1,4 +1,4 @@
-name: Manual Build Process (Work Dir Permissions)
+name: Manual Build Process (Pre-Create Work Dir)
 on:
   push:
     branches: ["main", "master"]
@@ -39,15 +39,15 @@ jobs:
             --security-opt apparmor:unconfined \
             pmos-toolbox \
             -c "
-              # 1. PREPARACIÓN DEL ENTORNO
-              mkdir -p /work && chmod 777 /work &&
+              # 1. CREAR EL USUARIO Y DARLE PERMISOS TOTALES
               mkdir -p /build && chmod 777 /build &&
               useradd -m -d /build -s /bin/bash pmos &&
               echo 'pmos ALL=(ALL) NOPASSWD:ALL' >> /etc/sudoers &&
-
-              # 2. DAR PERMISOS DE ESCRITURA AL USUARIO pmos SOBRE SU CARPETA HOME
               chown -R pmos:pmos /build &&
-              chown -R pmos:pmos /tmp/out &&
+
+              # 2. CREAR LA CARPETA DE TRABAJO ANTES DE QUE PMBOOTSTRAP LA PIDA
+              mkdir -p /build/.local/var/pmbootstrap &&
+              chown -R pmos:pmos /build/.local &&
 
               # 3. CLONAR EL REPO OFICIAL Y ENLAZAR TU DISPOSITIVO
               git clone https://gitlab.postmarketos.org/postmarketOS/pmaports.git /home/pmos/pmaports_clean &&
@@ -62,7 +62,7 @@ jobs:
               mkdir -p /work/y &&
               cp /home/pmos/pmaports_clean/pmaports.cfg /work/y/pmaports.cfg &&
 
-              # 5. EL TRUCO DEFINITIVO: init SIN --aports
+              # 5. EJECUTAR EL INIT Y EL INSTALL
               sudo -u pmos bash -c \"
                 yes | /pmbootstrap/venv/bin/pmbootstrap init &&
                 /pmbootstrap/venv/bin/pmbootstrap --aports /home/pmos/pmaports_clean install --no-fde &&

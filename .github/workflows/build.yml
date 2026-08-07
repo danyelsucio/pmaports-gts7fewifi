@@ -12,34 +12,54 @@ jobs:
       - name: Install system dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y git bmap-tools
+          sudo apt-get install -y python3-pip git openssl device-tree-compiler bmap-tools
           
-      - name: Build rootfs using official pmbootstrap Docker image
+      - name: Install pmbootstrap v3.2.0 (Latest stable tag)
         run: |
-          chmod -R 755 ${{ github.workspace }}
+          # Clonamos el tag 3.2.0, que es la versión estable más reciente que existe.
+          git clone https://gitlab.postmarketos.org/postmarketOS/pmbootstrap.git -b 3.2.0 --depth 1
+          pip3 install --user ./pmbootstrap
+          echo "$HOME/.local/bin" >> $GITHUB_PATH
           
-          # Eliminamos el flag '-ti' porque GitHub Actions no tiene TTY
-          docker run --rm \
-            -v ${{ github.workspace }}:/home/pmos/pmaports \
-            -v /tmp/pmbootstrap_work:/home/pmos/.local/var/pmbootstrap \
-            --device /dev/fuse \
-            --cap-add SYS_ADMIN \
-            --security-opt apparmor:unconfined \
-            registry.gitlab.com/postmarketos/pmbootstrap:latest \
-            sh -c "
-              echo '[pmaports]' > /home/pmos/pmaports/pmaports.cfg &&
-              echo 'version = 7' >> /home/pmos/pmaports/pmaports.cfg &&
-              echo 'pmbootstrap_min_version = 1.29.0' >> /home/pmos/pmaports/pmaports.cfg &&
-              echo 'channel = edge' >> /home/pmos/pmaports/pmaports.cfg &&
-              
-              pmbootstrap --aports /home/pmos/pmaports --work /home/pmos/.local/var/pmbootstrap init --yes &&
-              pmbootstrap --aports /home/pmos/pmaports --work /home/pmos/.local/var/pmbootstrap install --no-fde --device gts7fewifi &&
-              pmbootstrap --aports /home/pmos/pmaports --work /home/pmos/.local/var/pmbootstrap export
-            "
+      - name: Configure pmbootstrap (Bypassing broken 'init')
+        run: |
+          mkdir -p ~/.config/pmbootstrap
+          mkdir -p /tmp/pmbootstrap_work
+          
+          # 1. Crear el archivo de configuración principal de pmbootstrap
+          cat > ~/.config/pmbootstrap/pmbootstrap.cfg <<EOF
+          [pmbootstrap]
+          aports = ${{ github.workspace }}
+          work = /tmp/pmbootstrap_work
+          device = gts7fewifi
+          channel = edge
+          ui = console
+          extra_space = 0
+          jobs = 2
+          EOF
+          
+          # 2. Crear el archivo pmaports.cfg obligatorio en la raíz
+          cat > ${{ github.workspace }}/pmaports.cfg <<EOF
+          [pmaports]
+          version = 7
+          pmbootstrap_min_version = 1.29.0
+          channel = edge
+          supported_root_filesystems = ext4,f2fs,btrfs
+          EOF
+          
+          # 3. "Engañar" a pmbootstrap para que piense que el init ya pasó.
+          # Esto evita los molestos errores de "Did you run pmbootstrap init?" y las preguntas interactivas.
+          touch ~/.config/pmbootstrap/pmbootstrap_init_done
+          
+      - name: Build rootfs for gts7fewifi
+        run: |
+          # Con la configuración ya lista, ejecutamos directamente los comandos de compilación.
+          # Usamos --aports en el install para asegurarnos de que use nuestra carpeta y no el caché.
+          pmbootstrap --aports ${{ github.workspace }} install --no-fde
+          pmbootstrap export
           
           mkdir -p /tmp/out
-          sudo cp -rv /tmp/pmbootstrap_work/cache_http/images/* /tmp/out/ || true
-          sudo chmod -R 755 /tmp/out
+          cp -rv /tmp/postmarketOS-export/* /tmp/out/ || true
           
       - name: Upload artifact
         uses: actions/upload-artifact@v4

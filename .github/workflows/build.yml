@@ -1,4 +1,4 @@
-name: Manual Build Process (CI Mode - Forced Device)
+name: Manual Build Process (The Absolute End)
 on:
   push:
     branches: ["main", "master"]
@@ -39,6 +39,7 @@ jobs:
             --security-opt apparmor:unconfined \
             pmos-toolbox \
             -c "
+              # PREPARACIÓN DEL ENTORNO
               mkdir -p /work && chmod 777 /work &&
               
               mkdir -p /build && chmod 777 /build &&
@@ -46,31 +47,39 @@ jobs:
               echo 'pmos ALL=(ALL) NOPASSWD:ALL' >> /etc/sudoers &&
               chown -R pmos:pmos /tmp/out && chown -R pmos:pmos /build &&
 
+              # CLONAR EL REPO OFICIAL Y ENLAZAR TU DISPOSITIVO
               git clone https://gitlab.postmarketos.org/postmarketOS/pmaports.git /home/pmos/pmaports_clean &&
               chown -R pmos:pmos /home/pmos/pmaports_clean &&
               ln -s /home/pmos/mi_repo /home/pmos/pmaports_clean/pmaports-gts7fewifi &&
 
+              # ARCHIVO DE CONFIGURACIÓN DE PMAPORTS
               echo '[pmaports]' > /home/pmos/pmaports_clean/pmaports.cfg &&
               echo 'version = 7' >> /home/pmos/pmaports_clean/pmaports.cfg &&
               echo 'pmbootstrap_min_version = 1.29.0' >> /home/pmos/pmaports_clean/pmaports.cfg &&
               echo 'channel = edge' >> /home/pmos/pmaports_clean/pmaports.cfg &&
 
-              # EL TRUCO DEFINITIVO: Variables de entorno para el init
+              # ARCHIVO DE CONFIGURACIÓN DE PMBOOTSTRAP (CON EL DISPOSITIVO Y WORK)
               sudo -u pmos bash -c \"
-                export PMBOOTSTRAP_APORTS=/home/pmos/pmaports_clean
-                export PMBOOTSTRAP_DEVICE=gts7fewifi
-                export PMBOOTSTRAP_CHANNEL=edge
-                export PMBOOTSTRAP_WORK=/tmp/pmos_work
+                mkdir -p /build/.config/pmbootstrap
+                echo '[pmbootstrap]' > /build/.config/pmbootstrap/pmbootstrap.cfg
+                echo 'aports = /home/pmos/pmaports_clean' >> /build/.config/pmbootstrap/pmbootstrap.cfg
+                echo 'work = /tmp/pmos_work' >> /build/.config/pmbootstrap/pmbootstrap.cfg
+                echo 'device = gts7fewifi' >> /build/.config/pmbootstrap/pmbootstrap.cfg
+                echo 'channel = edge' >> /build/.config/pmbootstrap/pmbootstrap.cfg
+                echo 'ui = console' >> /build/.config/pmbootstrap/pmbootstrap.cfg
+                echo 'extra_space = 1500' >> /build/.config/pmbootstrap/pmbootstrap.cfg
 
+                # PREPARAR CARPETA DE TRABAJO
                 mkdir -p /tmp/pmos_work
-                
-                # El init se ejecutará sin preguntar nada gracias a las variables de entorno
-                /pmbootstrap/venv/bin/pmbootstrap init --yes
 
-                /pmbootstrap/venv/bin/pmbootstrap install --no-fde
-                /pmbootstrap/venv/bin/pmbootstrap export
+                # EJECUTAR INSTALACIÓN PASANDO EL DISPOSITIVO DIRECTAMENTE
+                /pmbootstrap/venv/bin/pmbootstrap --config /build/.config/pmbootstrap/pmbootstrap.cfg install --no-fde --device gts7fewifi
+
+                # EXPORTAR LA IMAGEN
+                /pmbootstrap/venv/bin/pmbootstrap --config /build/.config/pmbootstrap/pmbootstrap.cfg export
               \"
 
+              # COPIAR ARTEFACTOS
               cp -rv /tmp/pmos_work/cache_http/images/* /tmp/out/ || true;
               cp -rv /tmp/postmarketOS-export/* /tmp/out/ || true;
             "

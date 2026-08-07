@@ -1,4 +1,4 @@
-name: Manual Build Process (Init + Install)
+name: Manual Build Process (No Init, Just Config)
 on:
   push:
     branches: ["main", "master"]
@@ -41,7 +41,6 @@ jobs:
             -c "
               # 1. PREPARACIÓN DEL ENTORNO
               mkdir -p /work && chmod 777 /work &&
-              
               mkdir -p /build && chmod 777 /build &&
               useradd -m -d /build -s /bin/bash pmos &&
               echo 'pmos ALL=(ALL) NOPASSWD:ALL' >> /etc/sudoers &&
@@ -58,17 +57,23 @@ jobs:
               echo 'pmbootstrap_min_version = 1.29.0' >> /home/pmos/pmaports_clean/pmaports.cfg &&
               echo 'channel = edge' >> /home/pmos/pmaports_clean/pmaports.cfg &&
 
-              # 4. EL TRUCO FINAL: INYECTAR LAS 4 RESPUESTAS
+              # 4. LA CLAVE: CREAR EL ARCHIVO DE CONFIGURACIÓN DE PMBOOTSTRAP CON TODO
               sudo -u pmos bash -c \"
-                # Inyectamos las respuestas directamente al init
-                printf '/tmp/pmos_work\nedge\nsamsung\ngts7fewifi\n' | /pmbootstrap/venv/bin/pmbootstrap init
+                mkdir -p /build/.config/pmbootstrap &&
+                echo '[pmbootstrap]' > /build/.config/pmbootstrap/pmbootstrap.cfg &&
+                echo 'aports = /home/pmos/pmaports_clean' >> /build/.config/pmbootstrap/pmbootstrap.cfg &&
+                echo 'work = /tmp/pmos_work' >> /build/.config/pmbootstrap/pmbootstrap.cfg &&
+                echo 'device = gts7fewifi' >> /build/.config/pmbootstrap/pmbootstrap.cfg &&
+                echo 'channel = edge' >> /build/.config/pmbootstrap/pmbootstrap.cfg &&
+                echo 'ui = console' >> /build/.config/pmbootstrap/pmbootstrap.cfg &&
+                echo 'extra_space = 1500' >> /build/.config/pmbootstrap/pmbootstrap.cfg &&
 
-                # AHORA EL INSTALADOR USARÁ EL DISPOSITIVO CORRECTO
-                /pmbootstrap/venv/bin/pmbootstrap install --no-fde
-                /pmbootstrap/venv/bin/pmbootstrap export
+                # 5. SIN INIT: PASAMOS EL ARCHIVO DE CONFIGURACIÓN DIRECTAMENTE AL INSTALL
+                /pmbootstrap/venv/bin/pmbootstrap --config /build/.config/pmbootstrap/pmbootstrap.cfg install --no-fde &&
+                /pmbootstrap/venv/bin/pmbootstrap --config /build/.config/pmbootstrap/pmbootstrap.cfg export
               \"
 
-              # 5. COPIAR ARTEFACTOS
+              # 6. COPIAR ARTEFACTOS
               cp -rv /tmp/pmos_work/cache_http/images/* /tmp/out/ || true;
               cp -rv /tmp/postmarketOS-export/* /tmp/out/ || true;
             "

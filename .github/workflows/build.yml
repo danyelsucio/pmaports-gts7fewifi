@@ -1,4 +1,4 @@
-name: Manual Build Process (Timestamp Work Dir)
+name: Manual Build Process (No Volume - In Memory)
 on:
   push:
     branches: ["main", "master"]
@@ -28,9 +28,10 @@ jobs:
       - name: Execute the Ultimate Build Step
         run: |
           mkdir -p /tmp/out
-          # NOMBRE ÚNICO PARA LA CARPETA DE TRABAJO (NUNCA SE REPITE)
+          # Nombre de carpeta único (la crearemos dentro del contenedor)
           WORK_DIR="/tmp/work_$(date +%s)"
           
+          # Ejecutamos el contenedor SIN montar el volumen de trabajo
           docker run --rm -t \
             --entrypoint bash \
             --user root \
@@ -59,7 +60,7 @@ jobs:
               echo 'pmbootstrap_min_version = 1.29.0' >> /home/pmos/pmaports_clean/pmaports.cfg &&
               echo 'channel = edge' >> /home/pmos/pmaports_clean/pmaports.cfg &&
 
-              # 4. CONFIGURACIÓN DE PMBOOTSTRAP CON NOMBRE DE CARPETA DINÁMICO
+              # 4. CONFIGURACIÓN DE PMBOOTSTRAP CON CARPETA EN MEMORIA
               sudo -u pmos bash -c \"
                 mkdir -p /build/.config/pmbootstrap &&
                 echo '[pmbootstrap]' > /build/.config/pmbootstrap/pmbootstrap.cfg &&
@@ -70,7 +71,7 @@ jobs:
                 echo 'ui = console' >> /build/.config/pmbootstrap/pmbootstrap.cfg &&
                 echo 'extra_space = 1500' >> /build/.config/pmbootstrap/pmbootstrap.cfg &&
 
-                # 5. CREAMOS LA CARPETA DE TRABAJO Y LE DAMOS PERMISOS
+                # 5. CREAMOS LA CARPETA DE TRABAJO EN MEMORIA
                 mkdir -p ${WORK_DIR} &&
                 chown -R pmos:pmos ${WORK_DIR} &&
 
@@ -83,9 +84,3 @@ jobs:
               cp -rv ${WORK_DIR}/cache_http/images/* /tmp/out/ || true;
               cp -rv /tmp/postmarketOS-export/* /tmp/out/ || true;
             "
-
-      - name: Upload final image
-        uses: actions/upload-artifact@v4
-        with:
-          name: pmos-gts7fewifi-image
-          path: /tmp/out/

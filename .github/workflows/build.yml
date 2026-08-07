@@ -14,14 +14,13 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y python3-pip git openssl device-tree-compiler bmap-tools
           
-      - name: Install pmbootstrap v3.1.0 (CI Friendly)
+      - name: Install pmbootstrap v3.1.0
         run: |
-          # Instalamos la 3.1.0 que NO tiene el bug del EOF y acepta el archivo de "init_done"
           git clone https://gitlab.postmarketos.org/postmarketOS/pmbootstrap.git -b 3.1.0 --depth 1
           pip3 install --user ./pmbootstrap
           echo "$HOME/.local/bin" >> $GITHUB_PATH
           
-      - name: Configure pmbootstrap (3.1.0 compatible)
+      - name: Create config files
         run: |
           mkdir -p ~/.config/pmbootstrap
           mkdir -p /tmp/pmbootstrap_work
@@ -52,13 +51,13 @@ jobs:
           git remote set-url origin https://gitlab.postmarketos.org/postmarketOS/pmaports.git
           git fetch origin master --depth 1
           
-          # ESTE ARCHIVO SÍ FUNCIONA EN LA 3.1.0
-          touch ~/.config/pmbootstrap/pmbootstrap_init_done
-          
       - name: Build rootfs for gts7fewifi
         run: |
-          # Con la 3.1.0 y el archivo creado, esto NO preguntará nada y pasará directo al build.
-          pmbootstrap init
+          # EL TRUCO FINAL: Usamos '--aports' DENTRO del init.
+          # Esto evita que pmbootstrap busque la ruta por defecto.
+          pmbootstrap --aports ${{ github.workspace }} init
+          
+          # Ahora ya podemos ejecutar el install con normalidad
           pmbootstrap install --no-fde
           pmbootstrap export
           

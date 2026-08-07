@@ -46,9 +46,10 @@ jobs:
           supported_root_filesystems = ext4,f2fs,btrfs
           EOF
           
-          # EL TRUCO DEFINITIVO: Forzamos que tu carpeta tenga el remote 'origin' oficial
+          # EL TRUCO DEFINITIVO CORREGIDO:
+          # Forzamos a Git a cambiar el remote 'origin' existente a la URL oficial
           cd ${{ github.workspace }}
-          git remote add origin https://gitlab.postmarketos.org/postmarketOS/pmaports.git
+          git remote set-url origin https://gitlab.postmarketos.org/postmarketOS/pmaports.git
           
           # Engañar a pmbootstrap para que no pregunte
           touch ~/.config/pmbootstrap/pmbootstrap_init_done

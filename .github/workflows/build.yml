@@ -1,4 +1,4 @@
-name: Manual Build Process (Version 3.10.0)
+name: Manual Build Process (No Work Dir)
 on:
   push:
     branches: ["main", "master"]
@@ -16,7 +16,7 @@ jobs:
           cat > Dockerfile <<EOF
           FROM ubuntu:22.04
           RUN apt-get update && apt-get install -y python3 python3-pip python3-venv git openssl device-tree-compiler bmap-tools sudo curl kpartx
-          RUN git clone https://gitlab.postmarketos.org/postmarketOS/pmbootstrap.git /pmbootstrap && cd /pmbootstrap && git checkout 3.10.0
+          RUN git clone https://gitlab.postmarketos.org/postmarketOS/pmbootstrap.git /pmbootstrap
           RUN python3 -m venv /pmbootstrap/venv
           RUN /pmbootstrap/venv/bin/pip install /pmbootstrap tomli
           WORKDIR /work
@@ -27,17 +27,12 @@ jobs:
 
       - name: Execute the Ultimate Build Step
         run: |
-          mkdir -p /tmp/pmbootstrap_work
           mkdir -p /tmp/out
-          
-          UNIQUE_BASE="/work_base_$(date +%s)"
-          WORK_DIR="${UNIQUE_BASE}/pmos_work"
           
           docker run --rm -t \
             --entrypoint bash \
             --user root \
             -v ${{ github.workspace }}:/home/pmos/mi_repo \
-            -v /tmp/pmbootstrap_work:${WORK_DIR} \
             -v /tmp/out:/tmp/out \
             --device /dev/fuse \
             --cap-add SYS_ADMIN \
@@ -51,7 +46,6 @@ jobs:
               echo 'pmos ALL=(ALL) NOPASSWD:ALL' >> /etc/sudoers &&
               chown -R pmos:pmos /tmp/out &&
               chown -R pmos:pmos /build &&
-              chown -R pmos:pmos ${UNIQUE_BASE} &&
 
               # 2. CLONAR EL REPO OFICIAL
               git clone https://gitlab.postmarketos.org/postmarketOS/pmaports.git /home/pmos/pmaports_clean &&
@@ -69,7 +63,7 @@ jobs:
                 mkdir -p /build/.config/pmbootstrap;
                 echo '[pmbootstrap]' > /build/.config/pmbootstrap/pmbootstrap.cfg;
                 echo 'aports = /home/pmos/pmaports_clean' >> /build/.config/pmbootstrap/pmbootstrap.cfg;
-                echo 'work = ${WORK_DIR}' >> /build/.config/pmbootstrap/pmbootstrap.cfg;
+                echo 'work = /tmp/pmos_work' >> /build/.config/pmbootstrap/pmbootstrap.cfg;
                 echo 'device = gts7fewifi' >> /build/.config/pmbootstrap/pmbootstrap.cfg;
                 echo 'channel = edge' >> /build/.config/pmbootstrap/pmbootstrap.cfg;
                 echo 'ui = console' >> /build/.config/pmbootstrap/pmbootstrap.cfg;
@@ -83,7 +77,7 @@ jobs:
               \"
 
               # 7. COPIAR ARTEFACTOS
-              cp -rv ${WORK_DIR}/cache_http/images/* /tmp/out/ || true;
+              cp -rv /tmp/pmos_work/cache_http/images/* /tmp/out/ || true;
               cp -rv /tmp/postmarketOS-export/* /tmp/out/ || true;
             "
 

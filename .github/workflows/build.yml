@@ -18,8 +18,9 @@ jobs:
           mkdir -p /tmp/pmbootstrap_work
           mkdir -p /tmp/out
           
+          # EL TRUCO DEFINITIVO DE PERMISOS:
+          # Primero corremos como root para arreglar permisos, luego cambiamos a 1000.
           docker run --rm -t \
-            --user 1000:1000 \
             --entrypoint bash \
             -v ${{ github.workspace }}:/home/pmos/pmaports \
             -v /tmp/pmbootstrap_work:/home/pmos/.local/var/pmbootstrap \
@@ -29,44 +30,47 @@ jobs:
             --security-opt apparmor:unconfined \
             pmos-toolbox \
             -c "
-              # ARREGLO DE PERMISOS: El usuario 1000 toma posesión de la carpeta montada
-              sudo chown -R 1000:1000 /home/pmos/pmaports &&
-              sudo chown -R 1000:1000 /home/pmos/.local/var/pmbootstrap &&
-              sudo chown -R 1000:1000 /tmp/out &&
+              # 1. Ejecutamos los cambios de permisos como root (no usa sudo)
+              chown -R 1000:1000 /home/pmos/pmaports &&
+              chown -R 1000:1000 /home/pmos/.local/var/pmbootstrap &&
+              chown -R 1000:1000 /tmp/out &&
 
-              echo '--- PASO 1: CONFIGURAR EL ENTORNO ---'
-              echo '[pmaports]' > /home/pmos/pmaports/pmaports.cfg &&
-              echo 'version = 7' >> /home/pmos/pmaports/pmaports.cfg &&
-              echo 'pmbootstrap_min_version = 1.29.0' >> /home/pmos/pmaports/pmaports.cfg &&
-              echo 'channel = edge' >> /home/pmos/pmaports/pmaports.cfg &&
+              # 2. AHORA cambiamos al usuario 1000 para el resto de comandos
+              su 1000 -c \"
+                echo '--- PASO 1: CONFIGURAR EL ENTORNO ---';
+                echo '[pmaports]' > /home/pmos/pmaports/pmaports.cfg;
+                echo 'version = 7' >> /home/pmos/pmaports/pmaports.cfg;
+                echo 'pmbootstrap_min_version = 1.29.0' >> /home/pmos/pmaports/pmaports.cfg;
+                echo 'channel = edge' >> /home/pmos/pmaports/pmaports.cfg;
 
-              echo '--- PASO 2: DESCARGAR E INSTALAR PMBOOTSTRAP ---'
-              git clone https://gitlab.postmarketos.org/postmarketOS/pmbootstrap.git /pmbootstrap_src &&
-              python3 -m venv /venv &&
-              /venv/bin/pip install /pmbootstrap_src tomli &&
+                echo '--- PASO 2: DESCARGAR E INSTALAR PMBOOTSTRAP ---';
+                git clone https://gitlab.postmarketos.org/postmarketOS/pmbootstrap.git /pmbootstrap_src;
+                python3 -m venv /venv;
+                /venv/bin/pip install /pmbootstrap_src tomli;
 
-              echo '--- PASO 3: PREPARAR LA CONFIGURACIÓN DEL DISPOSITIVO ---'
-              mkdir -p /home/pmos/.config/pmbootstrap &&
-              echo '[pmbootstrap]' > /home/pmos/.config/pmbootstrap/pmbootstrap.cfg &&
-              echo 'aports = /home/pmos/pmaports' >> /home/pmos/.config/pmbootstrap/pmbootstrap.cfg &&
-              echo 'work = /home/pmos/.local/var/pmbootstrap' >> /home/pmos/.config/pmbootstrap/pmbootstrap.cfg &&
-              echo 'device = gts7fewifi' >> /home/pmos/.config/pmbootstrap/pmbootstrap.cfg &&
-              echo 'channel = edge' >> /home/pmos/.config/pmbootstrap/pmbootstrap.cfg &&
-              echo 'ui = console' >> /home/pmos/.config/pmbootstrap/pmbootstrap.cfg &&
-              echo 'extra_space = 1500' >> /home/pmos/.config/pmbootstrap/pmbootstrap.cfg &&
+                echo '--- PASO 3: PREPARAR LA CONFIGURACIÓN DEL DISPOSITIVO ---';
+                mkdir -p /home/pmos/.config/pmbootstrap;
+                echo '[pmbootstrap]' > /home/pmos/.config/pmbootstrap/pmbootstrap.cfg;
+                echo 'aports = /home/pmos/pmaports' >> /home/pmos/.config/pmbootstrap/pmbootstrap.cfg;
+                echo 'work = /home/pmos/.local/var/pmbootstrap' >> /home/pmos/.config/pmbootstrap/pmbootstrap.cfg;
+                echo 'device = gts7fewifi' >> /home/pmos/.config/pmbootstrap/pmbootstrap.cfg;
+                echo 'channel = edge' >> /home/pmos/.config/pmbootstrap/pmbootstrap.cfg;
+                echo 'ui = console' >> /home/pmos/.config/pmbootstrap/pmbootstrap.cfg;
+                echo 'extra_space = 1500' >> /home/pmos/.config/pmbootstrap/pmbootstrap.cfg;
 
-              echo '--- PASO 4: EL PASO DEL BOOTSTRAP (INIT) ---'
-              printf '/home/pmos/.local/var/pmbootstrap\nedge\nsamsung\ngts7fewifi\n' | /venv/bin/pmbootstrap --aports /home/pmos/pmaports init &&
+                echo '--- PASO 4: EL PASO DEL BOOTSTRAP (INIT) ---';
+                printf '/home/pmos/.local/var/pmbootstrap\nedge\nsamsung\ngts7fewifi\n' | /venv/bin/pmbootstrap --aports /home/pmos/pmaports init;
 
-              echo '--- PASO 5: COMPILAR (INSTALL) ---'
-              /venv/bin/pmbootstrap --aports /home/pmos/pmaports install --no-fde &&
+                echo '--- PASO 5: COMPILAR (INSTALL) ---';
+                /venv/bin/pmbootstrap --aports /home/pmos/pmaports install --no-fde;
 
-              echo '--- PASO 6: EXPORTAR LA IMAGEN ---'
-              /venv/bin/pmbootstrap --aports /home/pmos/pmaports export &&
+                echo '--- PASO 6: EXPORTAR LA IMAGEN ---';
+                /venv/bin/pmbootstrap --aports /home/pmos/pmaports export;
 
-              echo '--- PASO 7: COPIAR ARTEFACTOS ---'
-              cp -rv /home/pmos/.local/var/pmbootstrap/cache_http/images/* /tmp/out/ || true &&
-              cp -rv /tmp/postmarketOS-export/* /tmp/out/ || true
+                echo '--- PASO 7: COPIAR ARTEFACTOS ---';
+                cp -rv /home/pmos/.local/var/pmbootstrap/cache_http/images/* /tmp/out/ || true;
+                cp -rv /tmp/postmarketOS-export/* /tmp/out/ || true;
+              \"
             "
 
       - name: Upload final image

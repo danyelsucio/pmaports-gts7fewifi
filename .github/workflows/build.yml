@@ -29,10 +29,10 @@ jobs:
           mkdir -p /tmp/out
           mkdir -p /tmp/git_pmaports
           
-          # 1. Clonar el repositorio oficial de pmaports en una carpeta temporal.
+          # 1. Clonar el repositorio oficial de pmaports
           git clone --depth 1 https://gitlab.postmarketos.org/postmarketOS/pmaports.git /tmp/git_pmaports
           
-          # 2. Crear un enlace simbólico en tu espacio de trabajo hacia el clon oficial.
+          # 2. Crear un enlace simbólico hacia el clon oficial
           ln -s /tmp/git_pmaports ${{ github.workspace }}/pmaports
           
           # 3. Crear el archivo de configuración (apuntando al enlace)
@@ -56,12 +56,14 @@ jobs:
           supported_root_filesystems = ext4,f2fs,btrfs
           EOF
           
-          # 5. EL TRUCO DEFINITIVO PARA EL INIT:
-          # Inyectamos las respuestas de las 3 preguntas que hace el init (Work path, Device, Channel) usando echo.
-          # Esto evita por completo el EOFError.
-          printf "/tmp/pmbootstrap_work\ngts7fewifi\nedge\n" | pmbootstrap --aports ${{ github.workspace }}/pmaports init
+          # 5. EL TRUCO DEFINITIVO: Inyectamos 4 respuestas
+          # Pregunta 1: Work path (/tmp/pmbootstrap_work)
+          # Pregunta 2: Channel (edge)
+          # Pregunta 3: Vendor (samsung - porque el gts7fewifi es Samsung)
+          # Pregunta 4: Device (gts7fewifi)
+          printf "/tmp/pmbootstrap_work\nedge\nsamsung\ngts7fewifi\n" | pmbootstrap --aports ${{ github.workspace }}/pmaports init
           
-          # 6. Ahora que el init ha generado la configuración, ejecutamos el install sin problemas.
+          # 6. Ejecutar el install
           pmbootstrap --aports ${{ github.workspace }}/pmaports --details-to-stdout install --no-fde
           
           # 7. Exportar artefactos

@@ -19,13 +19,12 @@ jobs:
           python3 -m venv venv
           source venv/bin/activate
           
-          # Instalamos la versión 3.9.0
           pip install "git+https://gitlab.postmarketos.org/postmarketOS/pmbootstrap.git@3.9.0"
           echo "$PWD/venv/bin" >> $GITHUB_PATH
           
-      - name: Build (Skipping all config and Git validation)
+      - name: Build (Using Symlink + Command-line Config)
         env:
-          # ESTA VARIABLE ES LA CLAVE. Obliga a pmbootstrap a saltarse la comprobación de Git en 3.9.0.
+          # Esta variable evita que se queje de Git
           PMBOOTSTRAP_SKIP_GIT_REQUIREMENT: "1"
         run: |
           mkdir -p /tmp/pmbootstrap_work
@@ -40,9 +39,13 @@ jobs:
           supported_root_filesystems = ext4,f2fs,btrfs
           EOF
           
-          # 2. TRUCO DEFINITIVO: Usamos el flag '-c' para pasar configuraciones por comando.
-          # Esto hace que pmbootstrap NUNCA intente leer el archivo ni preguntar nada.
-          # Además activamos --details-to-stdout para evitar timeouts.
+          # 2. EL TRUCO MAESTRO: Crear un enlace simbólico en la ruta por defecto
+          # Esto engaña a pmbootstrap haciéndole creer que la carpeta está donde él quiere.
+          mkdir -p /home/runner/.local/var/pmbootstrap/cache_git
+          ln -s ${{ github.workspace }} /home/runner/.local/var/pmbootstrap/cache_git/pmaports
+          
+          # 3. Ejecutar el install usando los argumentos -c (config)
+          # Esto evita tener que ejecutar el init y sus preguntas interactivas.
           pmbootstrap \
             -c aports=${{ github.workspace }} \
             -c work=/tmp/pmbootstrap_work \
@@ -54,13 +57,13 @@ jobs:
             --details-to-stdout \
             install --no-fde
           
-          # 3. Exportar artefactos
+          # 4. Exportar artefactos
           pmbootstrap \
             -c aports=${{ github.workspace }} \
             -c work=/tmp/pmbootstrap_work \
             export
           
-          # 4. Copiar artefactos
+          # 5. Copiar artefactos
           cp -rv /tmp/postmarketOS-export/* /tmp/out/ || true
           
       - name: Upload artifact

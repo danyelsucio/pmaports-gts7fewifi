@@ -18,8 +18,6 @@ jobs:
           mkdir -p /tmp/pmbootstrap_work
           mkdir -p /tmp/out
           
-          # EL TRUCO DEFINITIVO DE PERMISOS:
-          # Primero corremos como root para arreglar permisos, luego cambiamos a 1000.
           docker run --rm -t \
             --entrypoint bash \
             -v ${{ github.workspace }}:/home/pmos/pmaports \
@@ -30,13 +28,17 @@ jobs:
             --security-opt apparmor:unconfined \
             pmos-toolbox \
             -c "
-              # 1. Ejecutamos los cambios de permisos como root (no usa sudo)
-              chown -R 1000:1000 /home/pmos/pmaports &&
-              chown -R 1000:1000 /home/pmos/.local/var/pmbootstrap &&
-              chown -R 1000:1000 /tmp/out &&
+              # 1. CREAMOS AL USUARIO pmos (con UID 1000) y le damos permisos de sudo
+              useradd -m -u 1000 -s /bin/bash pmos &&
+              echo 'pmos ALL=(ALL) NOPASSWD:ALL' >> /etc/sudoers &&
+              
+              # 2. ARREGLAMOS PERMISOS DE LAS CARPETAS como root
+              chown -R pmos:pmos /home/pmos/pmaports &&
+              chown -R pmos:pmos /home/pmos/.local/var/pmbootstrap &&
+              chown -R pmos:pmos /tmp/out &&
 
-              # 2. AHORA cambiamos al usuario 1000 para el resto de comandos
-              su 1000 -c \"
+              # 3. EJECUTAMOS EL RESTO DE COMANDOS COMO EL USUARIO pmos
+              sudo -u pmos bash -c \"
                 echo '--- PASO 1: CONFIGURAR EL ENTORNO ---';
                 echo '[pmaports]' > /home/pmos/pmaports/pmaports.cfg;
                 echo 'version = 7' >> /home/pmos/pmaports/pmaports.cfg;

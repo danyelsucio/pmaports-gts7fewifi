@@ -9,54 +9,19 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       
-      - name: Install system dependencies
+      - name: Install pmbootstrap-ci
         run: |
-          sudo apt-get update
-          sudo apt-get install -y python3-pip git openssl device-tree-compiler bmap-tools
-          
-      - name: Install latest pmbootstrap (stable)
-        run: |
-          # Instalamos la versión más reciente directamente desde el código fuente
-          git clone https://gitlab.postmarketos.org/postmarketOS/pmbootstrap.git
-          pip3 install --user ./pmbootstrap
-          echo "$HOME/.local/bin" >> $GITHUB_PATH
+          # Esta es la herramienta oficial para CI. No instala pmbootstrap, usa contenedores ya probados.
+          curl -L https://gitlab.postmarketos.org/postmarketOS/pmbootstrap-ci/-/raw/master/pmbootstrap-ci.py -o pmbootstrap-ci.py
+          chmod +x pmbootstrap-ci.py
           
       - name: Build rootfs for gts7fewifi
-        env:
-          # Esta variable anula el molesto error de Git de la versión actual
-          PMBOOTSTRAP_SKIP_GIT_REQUIREMENT: "1"
         run: |
-          mkdir -p ~/.config/pmbootstrap
-          mkdir -p /tmp/pmbootstrap_work
-          mkdir -p /tmp/out
-          
-          # 1. Crear el archivo de configuración
-          cat > ~/.config/pmbootstrap/pmbootstrap.cfg <<EOF
-          [pmbootstrap]
-          aports = ${{ github.workspace }}
-          work = /tmp/pmbootstrap_work
-          device = gts7fewifi
-          channel = edge
-          ui = console
-          extra_space = 1500
-          jobs = 2
-          EOF
-          
-          # 2. Crear pmaports.cfg
-          cat > ${{ github.workspace }}/pmaports.cfg <<EOF
-          [pmaports]
-          version = 7
-          pmbootstrap_min_version = 1.29.0
-          channel = edge
-          supported_root_filesystems = ext4,f2fs,btrfs
-          EOF
-          
-          # 3. Usamos --config para saltarnos el init y el EOFError
-          # Y usamos --details-to-stdout (que SÍ existe en la versión actual)
-          pmbootstrap --config ~/.config/pmbootstrap/pmbootstrap.cfg --details-to-stdout install --no-fde
-          
-          pmbootstrap export
-          cp -rv /tmp/postmarketOS-export/* /tmp/out/ || true
+          ./pmbootstrap-ci.py \
+            --device gts7fewifi \
+            --channel edge \
+            --no-fde \
+            --output /tmp/out
           
       - name: Upload artifact
         uses: actions/upload-artifact@v4

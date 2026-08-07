@@ -16,17 +16,16 @@ jobs:
           
       - name: Install pmbootstrap v3.2.0 (Latest stable tag)
         run: |
-          # Clonamos el tag 3.2.0, que es la versión estable más reciente que existe.
           git clone https://gitlab.postmarketos.org/postmarketOS/pmbootstrap.git -b 3.2.0 --depth 1
           pip3 install --user ./pmbootstrap
           echo "$HOME/.local/bin" >> $GITHUB_PATH
           
-      - name: Configure pmbootstrap (Bypassing broken 'init')
+      - name: Configure pmbootstrap
         run: |
           mkdir -p ~/.config/pmbootstrap
           mkdir -p /tmp/pmbootstrap_work
           
-          # 1. Crear el archivo de configuración principal de pmbootstrap
+          # Configuración principal
           cat > ~/.config/pmbootstrap/pmbootstrap.cfg <<EOF
           [pmbootstrap]
           aports = ${{ github.workspace }}
@@ -38,7 +37,7 @@ jobs:
           jobs = 2
           EOF
           
-          # 2. Crear el archivo pmaports.cfg obligatorio en la raíz
+          # pmaports.cfg obligatorio
           cat > ${{ github.workspace }}/pmaports.cfg <<EOF
           [pmaports]
           version = 7
@@ -47,15 +46,16 @@ jobs:
           supported_root_filesystems = ext4,f2fs,btrfs
           EOF
           
-          # 3. "Engañar" a pmbootstrap para que piense que el init ya pasó.
-          # Esto evita los molestos errores de "Did you run pmbootstrap init?" y las preguntas interactivas.
+          # Engañar a pmbootstrap
           touch ~/.config/pmbootstrap/pmbootstrap_init_done
           
       - name: Build rootfs for gts7fewifi
+        env:
+          # ESTA VARIABLE ES LA CLAVE. Obliga a pmbootstrap a saltarse la comprobación de Git.
+          PMBOOTSTRAP_SKIP_GIT_REQUIREMENT: "1"
         run: |
-          # Con la configuración ya lista, ejecutamos directamente los comandos de compilación.
-          # Usamos --aports en el install para asegurarnos de que use nuestra carpeta y no el caché.
-          pmbootstrap --aports ${{ github.workspace }} install --no-fde
+          # Usamos el flag --details-to-stdout para que no se cuelgue por timeout
+          pmbootstrap --aports ${{ github.workspace }} install --no-fde --details-to-stdout
           pmbootstrap export
           
           mkdir -p /tmp/out

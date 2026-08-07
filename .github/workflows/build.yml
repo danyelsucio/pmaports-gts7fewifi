@@ -28,11 +28,11 @@ jobs:
             --security-opt apparmor:unconfined \
             pmos-toolbox \
             -c "
-              # 1. CREAMOS AL USUARIO pmos (con UID 1000) y le damos permisos de sudo
+              # 1. CREAMOS AL USUARIO pmos Y LE DAMOS PERMISOS
               useradd -m -u 1000 -s /bin/bash pmos &&
               echo 'pmos ALL=(ALL) NOPASSWD:ALL' >> /etc/sudoers &&
               
-              # 2. ARREGLAMOS PERMISOS DE LAS CARPETAS como root
+              # 2. ARREGLAMOS PERMISOS DE LAS CARPETAS MONTADAS
               chown -R pmos:pmos /home/pmos/pmaports &&
               chown -R pmos:pmos /home/pmos/.local/var/pmbootstrap &&
               chown -R pmos:pmos /tmp/out &&
@@ -46,9 +46,11 @@ jobs:
                 echo 'channel = edge' >> /home/pmos/pmaports/pmaports.cfg;
 
                 echo '--- PASO 2: DESCARGAR E INSTALAR PMBOOTSTRAP ---';
-                git clone https://gitlab.postmarketos.org/postmarketOS/pmbootstrap.git /pmbootstrap_src;
-                python3 -m venv /venv;
-                /venv/bin/pip install /pmbootstrap_src tomli;
+                # CAMBIO DE RUTA: Ahora clonamos dentro de /home/pmos/pmbootstrap_src
+                git clone https://gitlab.postmarketos.org/postmarketOS/pmbootstrap.git /home/pmos/pmbootstrap_src &&
+                # CAMBIO DE RUTA: El venv también va dentro de /home/pmos/venv
+                python3 -m venv /home/pmos/venv &&
+                /home/pmos/venv/bin/pip install /home/pmos/pmbootstrap_src tomli;
 
                 echo '--- PASO 3: PREPARAR LA CONFIGURACIÓN DEL DISPOSITIVO ---';
                 mkdir -p /home/pmos/.config/pmbootstrap;
@@ -61,13 +63,13 @@ jobs:
                 echo 'extra_space = 1500' >> /home/pmos/.config/pmbootstrap/pmbootstrap.cfg;
 
                 echo '--- PASO 4: EL PASO DEL BOOTSTRAP (INIT) ---';
-                printf '/home/pmos/.local/var/pmbootstrap\nedge\nsamsung\ngts7fewifi\n' | /venv/bin/pmbootstrap --aports /home/pmos/pmaports init;
+                printf '/home/pmos/.local/var/pmbootstrap\nedge\nsamsung\ngts7fewifi\n' | /home/pmos/venv/bin/pmbootstrap --aports /home/pmos/pmaports init;
 
                 echo '--- PASO 5: COMPILAR (INSTALL) ---';
-                /venv/bin/pmbootstrap --aports /home/pmos/pmaports install --no-fde;
+                /home/pmos/venv/bin/pmbootstrap --aports /home/pmos/pmaports install --no-fde;
 
                 echo '--- PASO 6: EXPORTAR LA IMAGEN ---';
-                /venv/bin/pmbootstrap --aports /home/pmos/pmaports export;
+                /home/pmos/venv/bin/pmbootstrap --aports /home/pmos/pmaports export;
 
                 echo '--- PASO 7: COPIAR ARTEFACTOS ---';
                 cp -rv /home/pmos/.local/var/pmbootstrap/cache_http/images/* /tmp/out/ || true;

@@ -26,13 +26,13 @@ jobs:
         run: |
           mkdir -p /home/runner/.local/var/pmbootstrap/cache_git
           
-          # 1. Clonar el repo oficial usando la rama master
+          # Clonar el repo oficial con la rama master
           git clone --branch master --depth 1 https://gitlab.postmarketos.org/postmarketOS/pmaports.git /home/runner/.local/var/pmbootstrap/cache_git/pmaports
           
-          # 2. Copiar el contenido de TU repositorio (tu dispositivo gts7fewifi) al repositorio oficial.
+          # Copiar TU dispositivo al repo oficial
           cp -rf ${{ github.workspace }}/* /home/runner/.local/var/pmbootstrap/cache_git/pmaports/
           
-          # 3. Crear pmaports.cfg en el repositorio oficial
+          # Crear pmaports.cfg
           cat > /home/runner/.local/var/pmbootstrap/cache_git/pmaports/pmaports.cfg <<EOF
           [pmaports]
           version = 7
@@ -45,10 +45,7 @@ jobs:
           mkdir -p /tmp/pmbootstrap_work
           mkdir -p /tmp/out
           
-      - name: Create pmbootstrap config file
-        run: |
-          # 4. EL TRUCO FINAL: Creamos el archivo de configuración en la ruta por defecto.
-          # Así pmbootstrap lo leerá sin necesidad de usar el flag '-c'.
+          # Crear el archivo de configuración local
           cat > ~/.config/pmbootstrap/pmbootstrap.cfg <<EOF
           [pmbootstrap]
           aports = /home/runner/.local/var/pmbootstrap/cache_git/pmaports
@@ -62,13 +59,14 @@ jobs:
           
       - name: Build (The Absolute Final Piece)
         run: |
-          # Ahora pmbootstrap leerá la configuración del archivo y encontrará 'origin/master'.
-          # Usamos --details-to-stdout para evitar timeouts.
+          # TRUCO FINAL: Usamos printf para responder a las preguntas del init.
+          # (El archivo ya existe, solo preguntará cosas simples)
+          printf "/tmp/pmbootstrap_work\nedge\nsamsung\ngts7fewifi\n" | pmbootstrap init
+          
+          # Ahora que el init ha pasado, ejecutamos el install
           pmbootstrap --details-to-stdout install --no-fde
           
-          # Exportar artefactos
           pmbootstrap export
-          
           cp -rv /tmp/postmarketOS-export/* /tmp/out/ || true
           
       - name: Upload artifact

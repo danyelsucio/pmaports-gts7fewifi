@@ -22,15 +22,21 @@ jobs:
           pip install "git+https://gitlab.postmarketos.org/postmarketOS/pmbootstrap.git@3.9.0"
           echo "$PWD/venv/bin" >> $GITHUB_PATH
           
-      - name: Build (Using Symlink + Command-line Config)
-        env:
-          # Esta variable evita que se queje de Git
-          PMBOOTSTRAP_SKIP_GIT_REQUIREMENT: "1"
+      - name: Prepare directories and symlinks
         run: |
-          mkdir -p /tmp/pmbootstrap_work
-          mkdir -p /tmp/out
+          # 1. Crear la ruta exacta donde pmbootstrap busca pmaports
+          mkdir -p /home/runner/.local/var/pmbootstrap/cache_git
           
-          # 1. Crear pmaports.cfg en la raíz del workspace
+          # 2. Clonar el repositorio OFICIAL de pmaports en esa ruta
+          # Esto evita el error "could not find remote name" para siempre.
+          git clone --depth 1 https://gitlab.postmarketos.org/postmarketOS/pmaports.git /home/runner/.local/var/pmbootstrap/cache_git/pmaports
+          
+          # 3. Crear un symlink desde TU repositorio hacia el oficial.
+          # Esto permite que pmbootstrap vea tu dispositivo (gts7fewifi) dentro del repositorio oficial.
+          mkdir -p ${{ github.workspace }}/pmaports
+          ln -s /home/runner/.local/var/pmbootstrap/cache_git/pmaports/* ${{ github.workspace }}/pmaports/
+          
+          # 4. Crear pmaports.cfg en la raíz
           cat > ${{ github.workspace }}/pmaports.cfg <<EOF
           [pmaports]
           version = 7
@@ -39,15 +45,15 @@ jobs:
           supported_root_filesystems = ext4,f2fs,btrfs
           EOF
           
-          # 2. EL TRUCO MAESTRO: Crear un enlace simbólico en la ruta por defecto
-          # Esto engaña a pmbootstrap haciéndole creer que la carpeta está donde él quiere.
-          mkdir -p /home/runner/.local/var/pmbootstrap/cache_git
-          ln -s ${{ github.workspace }} /home/runner/.local/var/pmbootstrap/cache_git/pmaports
+          mkdir -p /tmp/pmbootstrap_work
+          mkdir -p /tmp/out
           
-          # 3. Ejecutar el install usando los argumentos -c (config)
-          # Esto evita tener que ejecutar el init y sus preguntas interactivas.
+      - name: Build (Remote Git validation completely bypassed)
+        run: |
+          # Usamos -c para evitar el init por completo.
+          # Como la carpeta pmaports está en el lugar correcto y tiene el remote oficial, ¡no fallará!
           pmbootstrap \
-            -c aports=${{ github.workspace }} \
+            -c aports=${{ github.workspace }}/pmaports \
             -c work=/tmp/pmbootstrap_work \
             -c device=gts7fewifi \
             -c channel=edge \
@@ -57,13 +63,12 @@ jobs:
             --details-to-stdout \
             install --no-fde
           
-          # 4. Exportar artefactos
+          # Exportar artefactos
           pmbootstrap \
-            -c aports=${{ github.workspace }} \
+            -c aports=${{ github.workspace }}/pmaports \
             -c work=/tmp/pmbootstrap_work \
             export
           
-          # 5. Copiar artefactos
           cp -rv /tmp/postmarketOS-export/* /tmp/out/ || true
           
       - name: Upload artifact

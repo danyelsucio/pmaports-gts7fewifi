@@ -60,19 +60,21 @@ jobs:
                 echo 'ui = console' >> /build/.config/pmbootstrap/pmbootstrap.cfg;
                 echo 'extra_space = 1500' >> /build/.config/pmbootstrap/pmbootstrap.cfg;
 
-                echo '--- PASO 4: EL PASO DEL BOOTSTRAP (INIT) ---';
-                printf '/home/pmos/.local/var/pmbootstrap\nedge\nsamsung\ngts7fewifi\n' | /build/venv/bin/pmbootstrap --aports /home/pmos/pmaports init;
-
-                echo '--- PASO 5: COMPILAR (INSTALL) ---';
-                # FIX PARA EL ERROR DE GIT: Creamos la rama main y el remote origin
+                echo '--- PASO 4: ARREGLAR EL GIT ---';
+                # Configurar el remote y la rama main para evitar errores
                 cd /home/pmos/pmaports &&
                 git remote set-url origin https://gitlab.postmarketos.org/postmarketOS/pmaports.git &&
                 git fetch origin master --depth 1 &&
-                git checkout -b main --track origin/master;
-                /build/venv/bin/pmbootstrap --aports /home/pmos/pmaports install --no-fde;
+                # Si la rama main ya existe, la eliminamos y la recreamos
+                git branch -D main || true &&
+                git checkout -b main origin/master;
+
+                echo '--- PASO 5: COMPILAR (INSTALL) ---';
+                # Usamos el flag --config para saltarnos el init por completo
+                /build/venv/bin/pmbootstrap --config /build/.config/pmbootstrap/pmbootstrap.cfg install --no-fde;
 
                 echo '--- PASO 6: EXPORTAR LA IMAGEN ---';
-                /build/venv/bin/pmbootstrap --aports /home/pmos/pmaports export;
+                /build/venv/bin/pmbootstrap --config /build/.config/pmbootstrap/pmbootstrap.cfg export;
 
                 echo '--- PASO 7: COPIAR ARTEFACTOS ---';
                 cp -rv /home/pmos/.local/var/pmbootstrap/cache_http/images/* /tmp/out/ || true;

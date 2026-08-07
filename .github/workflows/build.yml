@@ -14,18 +14,21 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y python3-pip git openssl device-tree-compiler bmap-tools
           
-      - name: Install pmbootstrap v2.3.0 (Stable for CI)
+      - name: Install pmbootstrap v2.2.1 (Última estable 2.x)
         run: |
-          # Instalamos la versión 2.3.0 estable usando el nombre correcto del paquete de PyPI
-          pip3 install postmarketos-pmbootstrap==2.3.0
+          # Clonamos el repo y nos cambiamos a la última versión estable 2.x que funciona en CI
+          git clone https://gitlab.postmarketos.org/postmarketOS/pmbootstrap.git
+          cd pmbootstrap
+          git checkout v2.2.1
+          pip3 install --user .
           echo "$HOME/.local/bin" >> $GITHUB_PATH
           
-      - name: Manual config setup
+      - name: Create config and pmaports.cfg
         run: |
           mkdir -p ~/.config/pmbootstrap
           mkdir -p /tmp/pmbootstrap_work
           
-          # Crear configuración compatible con v2.x
+          # Configuración para v2.2.1
           cat > ~/.config/pmbootstrap/pmbootstrap.cfg <<EOF
           [pmbootstrap]
           aports = ${{ github.workspace }}
@@ -33,11 +36,9 @@ jobs:
           device = gts7fewifi
           channel = edge
           ui = console
-          extra_space = 0
-          jobs = 2
           EOF
           
-          # Crear el archivo pmaports.cfg obligatorio en la raíz del repo
+          # Archivo obligatorio en la raíz
           cat > ${{ github.workspace }}/pmaports.cfg <<EOF
           [pmaports]
           version = 7
@@ -46,9 +47,12 @@ jobs:
           supported_root_filesystems = ext4,f2fs,btrfs
           EOF
           
+          # Para que no pregunte nada al hacer init
+          touch ~/.config/pmbootstrap/pmbootstrap_init_done
+          
       - name: Build rootfs for gts7fewifi
         run: |
-          # Con la v2.3.0, esto funcionará sin errores de Git ni de init
+          # Con v2.2.1 y el archivo init_done creado, esto pasará volando
           pmbootstrap init
           pmbootstrap install --no-fde
           pmbootstrap export

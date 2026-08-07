@@ -1,4 +1,4 @@
-name: Build postmarketOS Image
+name: Manual Build Process (Ultimate Fix)
 on:
   push:
     branches: ["main", "master"]
@@ -8,33 +8,74 @@ jobs:
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
-      
-      - name: Build using official Docker image (ghcr.io)
+
+      - name: Build custom pmbootstrap Docker image
         run: |
+          cat > Dockerfile <<EOF
+          FROM ubuntu:22.04
+          RUN apt-get update && apt-get install -y python3 python3-pip python3-venv git openssl device-tree-compiler bmap-tools sudo curl
+          RUN git clone https://gitlab.postmarketos.org/postmarketOS/pmbootstrap.git /pmbootstrap
+          RUN python3 -m venv /pmbootstrap/venv
+          RUN /pmbootstrap/venv/bin/pip install /pmbootstrap
+          WORKDIR /work
+          CMD ["/pmbootstrap/venv/bin/pmbootstrap"]
+          EOF
+          
+          docker build -t pmos-toolbox .
+
+      - name: Execute the Ultimate Build Step
+        run: |
+          mkdir -p /tmp/pmbootstrap_work
           mkdir -p /tmp/out
           
-          # Ejecutamos el contenedor oficial de postmarketOS desde GitHub Packages
           docker run --rm -t \
+            --entrypoint bash \
             -v ${{ github.workspace }}:/home/pmos/pmaports \
-            -v /tmp/out:/home/pmos/out \
+            -v /tmp/pmbootstrap_work:/home/pmos/.local/var/pmbootstrap \
+            -v /tmp/out:/tmp/out \
             --device /dev/fuse \
             --cap-add SYS_ADMIN \
             --security-opt apparmor:unconfined \
-            ghcr.io/postmarketos/pmbootstrap:latest \
-            sh -c "
-              # 1. Inicializar la configuración (init) sin interacción humana
-              echo 'edge' | pmbootstrap --aports /home/pmos/pmaports init --yes --device gts7fewifi &&
-              
-              # 2. Instalar el sistema operativo
-              pmbootstrap --aports /home/pmos/pmaports install --no-fde &&
-              
-              # 3. Exportar la imagen generada
-              pmbootstrap --aports /home/pmos/pmaports export &&
-              
-              # 4. Mover el resultado a la carpeta de salida
-              cp -rv /home/pmos/.local/var/pmbootstrap/cache_http/images/* /home/pmos/out/ || true
+            pmos-toolbox \
+            -c "
+              # 1. CREAR EL USUARIO Y PERMISOS
+              mkdir -p /build &&
+              chmod 777 /build &&
+              useradd -m -d /build -s /bin/bash pmos &&
+              echo 'pmos ALL=(ALL) NOPASSWD:ALL' >> /etc/sudoers &&
+              chown -R pmos:pmos /home/pmos/pmaports &&
+              chown -R pmos:pmos /home/pmos/.local/var/pmbootstrap &&
+              chown -R pmos:pmos /tmp/out &&
+              chown -R pmos:pmos /build &&
+
+              # 2. PREPARAR EL ARCHIVO DE CONFIGURACIÓN
+              sudo -u pmos bash -c \"
+                mkdir -p /build/.config/pmbootstrap;
+                echo '[pmbootstrap]' > /build/.config/pmbootstrap/pmbootstrap.cfg;
+                echo 'aports = /home/pmos/pmaports' >> /build/.config/pmbootstrap/pmbootstrap.cfg;
+                echo 'work = /home/pmos/.local/var/pmbootstrap' >> /build/.config/pmbootstrap/pmbootstrap.cfg;
+                echo 'device = gts7fewifi' >> /build/.config/pmbootstrap/pmbootstrap.cfg;
+                echo 'channel = edge' >> /build/.config/pmbootstrap/pmbootstrap.cfg;
+                echo 'ui = console' >> /build/.config/pmbootstrap/pmbootstrap.cfg;
+                echo 'extra_space = 1500' >> /build/.config/pmbootstrap/pmbootstrap.cfg;
+
+                echo '[pmaports]' > /home/pmos/pmaports/pmaports.cfg;
+                echo 'version = 7' >> /home/pmos/pmaports/pmaports.cfg;
+                echo 'pmbootstrap_min_version = 1.29.0' >> /home/pmos/pmaports/pmaports.cfg;
+                echo 'channel = edge' >> /home/pmos/pmaports/pmaports.cfg;
+
+                # 3. EL TRUCO FINAL: Usamos --config para saltarnos el init por completo
+                /pmbootstrap/venv/bin/pmbootstrap --config /build/.config/pmbootstrap/pmbootstrap.cfg install --no-fde;
+
+                # 4. EXPORTAR LA IMAGEN
+                /pmbootstrap/venv/bin/pmbootstrap --config /build/.config/pmbootstrap/pmbootstrap.cfg export;
+              \"
+
+              # 5. COPIAR LOS ARTEFACTOS (Como root para evitar permisos)
+              cp -rv /home/pmos/.local/var/pmbootstrap/cache_http/images/* /tmp/out/ || true;
+              cp -rv /tmp/postmarketOS-export/* /tmp/out/ || true;
             "
-      
+
       - name: Upload final image
         uses: actions/upload-artifact@v4
         with:

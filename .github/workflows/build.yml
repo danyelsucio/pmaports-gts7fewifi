@@ -1,4 +1,4 @@
-name: Manual Build Process (The Compilation)
+name: Manual Build Process (No Overlayfs Conflict)
 on:
   push:
     branches: ["main", "master"]
@@ -39,35 +39,31 @@ jobs:
             --security-opt apparmor:unconfined \
             pmos-toolbox \
             -c "
-              # 1. CREAR EL USUARIO
+              # 1. CREAR EL USUARIO (YA TIENE SU HOME CON PERMISOS)
               useradd -m -d /build -s /bin/bash pmos &&
               echo 'pmos ALL=(ALL) NOPASSWD:ALL' >> /etc/sudoers &&
               chown -R pmos:pmos /build &&
 
-              # 2. CREAR LA CARPETA DE TRABAJO Y DARLE PERMISOS
-              mkdir -p /tmp/pmos_work &&
-              chmod 777 /tmp/pmos_work &&
-              chown -R pmos:pmos /tmp/pmos_work &&
-
-              # 3. CLONAR EL REPO OFICIAL Y ENLAZAR TU DISPOSITIVO
+              # 2. CLONAR EL REPO OFICIAL Y ENLAZAR TU DISPOSITIVO
               git clone https://gitlab.postmarketos.org/postmarketOS/pmaports.git /home/pmos/pmaports_clean &&
               chown -R pmos:pmos /home/pmos/pmaports_clean &&
               ln -s /home/pmos/mi_repo /home/pmos/pmaports_clean/pmaports-gts7fewifi &&
 
-              # 4. ARCHIVO DE CONFIGURACIÓN DE PMAPORTS
+              # 3. ARCHIVO DE CONFIGURACIÓN DE PMAPORTS
               echo '[pmaports]' > /home/pmos/pmaports_clean/pmaports.cfg &&
               echo 'version = 7' >> /home/pmos/pmaports_clean/pmaports.cfg &&
               echo 'pmbootstrap_min_version = 1.29.0' >> /home/pmos/pmaports_clean/pmaports.cfg &&
               echo 'channel = edge' >> /home/pmos/pmaports_clean/pmaports.cfg &&
 
-              # 5. EJECUTAR EL INIT Y EL INSTALL
+              # 4. EL TRUCO DEFINITIVO: USAMOS LA CARPETA DEL USUARIO PARA EL WORK
               sudo -u pmos bash -c \"
-                yes | /pmbootstrap/venv/bin/pmbootstrap --work /tmp/pmos_work init &&
-                /pmbootstrap/venv/bin/pmbootstrap --work /tmp/pmos_work --aports /home/pmos/pmaports_clean install --no-fde &&
-                /pmbootstrap/venv/bin/pmbootstrap --work /tmp/pmos_work --aports /home/pmos/pmaports_clean export
+                # NO CREAMOS NADA EN /tmp. Usamos /build/pmos_work (dentro del home del usuario)
+                yes | /pmbootstrap/venv/bin/pmbootstrap --work /build/pmos_work init &&
+                /pmbootstrap/venv/bin/pmbootstrap --work /build/pmos_work --aports /home/pmos/pmaports_clean install --no-fde &&
+                /pmbootstrap/venv/bin/pmbootstrap --work /build/pmos_work --aports /home/pmos/pmaports_clean export
               \"
 
-              # 6. COPIAR ARTEFACTOS
-              cp -rv /tmp/pmos_work/cache_http/images/* /tmp/out/ || true;
+              # 5. COPIAR ARTEFACTOS
+              cp -rv /build/pmos_work/cache_http/images/* /tmp/out/ || true;
               cp -rv /tmp/postmarketOS-export/* /tmp/out/ || true;
             "

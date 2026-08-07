@@ -12,51 +12,35 @@ jobs:
       - name: Install system dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y python3-pip git openssl device-tree-compiler bmap-tools
+          sudo apt-get install -y git bmap-tools
           
-      - name: Install pmbootstrap v3.1.0
+      - name: Build rootfs using official pmbootstrap Docker image
         run: |
-          git clone https://gitlab.postmarketos.org/postmarketOS/pmbootstrap.git -b 3.1.0 --depth 1
-          pip3 install --user ./pmbootstrap
-          echo "$HOME/.local/bin" >> $GITHUB_PATH
+          chmod -R 755 ${{ github.workspace }}
           
-      - name: Create config files
-        run: |
-          mkdir -p ~/.config/pmbootstrap
-          mkdir -p /tmp/pmbootstrap_work
-          
-          cat > ~/.config/pmbootstrap/pmbootstrap.cfg <<EOF
-          [pmbootstrap]
-          aports = ${{ github.workspace }}
-          work = /tmp/pmbootstrap_work
-          device = gts7fewifi
-          channel = edge
-          ui = console
-          extra_space = 1500
-          jobs = 2
-          EOF
-          
-          cat > ${{ github.workspace }}/pmaports.cfg <<EOF
-          [pmaports]
-          version = 7
-          pmbootstrap_min_version = 1.29.0
-          channel = edge
-          supported_root_filesystems = ext4,f2fs,btrfs
-          EOF
-          
-          cd ${{ github.workspace }}
-          git remote set-url origin https://gitlab.postmarketos.org/postmarketOS/pmaports.git
-          git fetch origin master --depth 1
-          
-      - name: Build rootfs for gts7fewifi
-        run: |
-          # EL TRUCO DEFINITIVO: Usamos --config para cargar el archivo manual y saltarnos el init por completo.
-          # Esto evita los errores de EOF y el argumento --yes.
-          pmbootstrap --config ~/.config/pmbootstrap/pmbootstrap.cfg install --no-fde --details-to-stdout
-          pmbootstrap export
+          # Usamos la imagen oficial sin errores de TTY
+          docker run --rm -t \
+            -v ${{ github.workspace }}:/home/pmos/pmaports \
+            -v /tmp/pmbootstrap_work:/home/pmos/.local/var/pmbootstrap \
+            --device /dev/fuse \
+            --cap-add SYS_ADMIN \
+            --security-opt apparmor:unconfined \
+            registry.gitlab.com/postmarketos/pmbootstrap:latest \
+            sh -c "
+              echo '[pmaports]' > /home/pmos/pmaports/pmaports.cfg &&
+              echo 'version = 7' >> /home/pmos/pmaports/pmaports.cfg &&
+              echo 'pmbootstrap_min_version = 1.29.0' >> /home/pmos/pmaports/pmaports.cfg &&
+              echo 'channel = edge' >> /home/pmos/pmaports/pmaports.cfg &&
+              
+              # EJECUTAMOS TODO DENTRO DEL CONTENEDOR
+              pmbootstrap --aports /home/pmos/pmaports --work /home/pmos/.local/var/pmbootstrap init --yes --device gts7fewifi --channel edge &&
+              pmbootstrap --aports /home/pmos/pmaports --work /home/pmos/.local/var/pmbootstrap install --no-fde &&
+              pmbootstrap --aports /home/pmos/pmaports --work /home/pmos/.local/var/pmbootstrap export
+            "
           
           mkdir -p /tmp/out
-          cp -rv /tmp/postmarketOS-export/* /tmp/out/ || true
+          sudo cp -rv /tmp/pmbootstrap_work/cache_http/images/* /tmp/out/ || true
+          sudo chmod -R 755 /tmp/out
           
       - name: Upload artifact
         uses: actions/upload-artifact@v4

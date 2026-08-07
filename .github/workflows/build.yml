@@ -1,4 +1,4 @@
-name: Manual Build Process (3.10.0 - The Final)
+name: Manual Build Process (Split Init and Install)
 on:
   push:
     branches: ["main", "master"]
@@ -57,9 +57,11 @@ jobs:
               echo 'pmbootstrap_min_version = 1.29.0' >> /home/pmos/pmaports_clean/pmaports.cfg &&
               echo 'channel = edge' >> /home/pmos/pmaports_clean/pmaports.cfg &&
 
-              # 4. EL TRUCO DEFINITIVO: yes | pmbootstrap init (3.10.0)
+              # 4. EL TRUCO DEFINITIVO: init SIN --aports, install CON --aports
               sudo -u pmos bash -c \"
-                yes | /pmbootstrap/venv/bin/pmbootstrap --aports /home/pmos/pmaports_clean init &&
+                # El init usará la ruta por defecto para validar
+                yes | /pmbootstrap/venv/bin/pmbootstrap init &&
+                # El install usará el --aports correcto
                 /pmbootstrap/venv/bin/pmbootstrap --aports /home/pmos/pmaports_clean install --no-fde &&
                 /pmbootstrap/venv/bin/pmbootstrap --aports /home/pmos/pmaports_clean export
               \"

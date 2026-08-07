@@ -24,17 +24,17 @@ jobs:
     - name: Initialize pmbootstrap
       run: |
         mkdir -p ~/.config/pmbootstrap
-        echo -e "[pmbootstrap]\naports = ${{ github.workspace }}\nwork = /tmp/pmbootstrap_work\nis_default_channel = False" > ~/.config/pmbootstrap/pmbootstrap.cfg
+        echo -e "[pmbootstrap]\naports = ${{ github.workspace }}\nwork = /tmp/pmbootstrap_work" > ~/.config/pmbootstrap/pmbootstrap.cfg
         pmbootstrap --aports ${{ github.workspace }} config device gts7fewifi
         pmbootstrap --aports ${{ github.workspace }} status
 
     - name: Build rootfs for gts7fewifi
       run: |
-        pmbootstrap --aports ${{ github.workspace }} install --no-fde --no-recommends --no-local --no-sshd --no-boot --no-extra || true
+        pmbootstrap --aports ${{ github.workspace }} install
         pmbootstrap --aports ${{ github.workspace }} export
-        find /tmp/postmarketOS-export -type f | head -n 100
+        ls -lh /tmp/postmarketOS-export/
         mkdir -p /tmp/out
-        cp -r /tmp/postmarketOS-export/* /tmp/out/ || true
+        cp -rv /tmp/postmarketOS-export/* /tmp/out/ || true
 
     - name: Upload artifact
       uses: actions/upload-artifact@v4
